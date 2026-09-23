@@ -2,6 +2,13 @@
 
 Die ESP32-S3 Version kann auch noch als Midi-Controller für andere USB-Midi-Geräten genutzt werden. Man kann dann zukünftig einen Raspberry-Pi5 mit der Software Pipedal damit steuern. Auch PlugIns (NeuralDSP) am PC könnte man damit dann steuern.
 
+## KiCad Änderungen
+
+Den MCP23017 benötigt man nicht weil genügend GPIOs zur Verfügung stehen.
+Die Spannungsversorgung 3.3V ist flächig auf der Cu-Oberseite.
+
+![](docs/images/PCB_ESP32_S3_3DVIEW.png)
+
 
 
 ![MidiFootController](docs/images/FootController001.JPEG)
