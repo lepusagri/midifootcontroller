@@ -114,7 +114,7 @@ ControllerMode lastDrawnMode = MODE_EFFECTS;
 SceneNumber lastDrawnSceneNumber = 0;
 PresetNumber lastDrawnPresetNumber = -1;
 int lastDrawnPresetNumForSlot[NUM_SWITCHES] = {-99, -99, -99, -99, -99, -99};
-size_t lastDrawnScrollOffset = 99999;
+size_t lastDrawnScrollOffset[NUM_SWITCHES] = {99999, 99999, 99999, 99999, 99999, 99999};
 
 void drawAllSlots(bool force);
 void setCurrentSceneLocal(SceneNumber scene);
@@ -138,8 +138,8 @@ void drawCenteredText(const char* text, uint8_t textSize) {
   display.print(text);
 }
 
-void drawPresetTicker(uint8_t index, int targetPresetNum) {
-  if (lastDrawnPresetNumForSlot[index] == targetPresetNum && lastDrawnScrollOffset == scrollOffset) {
+void drawPresetTicker(uint8_t index, int targetPresetNum, bool force = false) {
+  if (!force && lastDrawnPresetNumForSlot[index] == targetPresetNum && lastDrawnScrollOffset[index] == scrollOffset) {
     return;
   }
 
@@ -218,7 +218,7 @@ void drawPresetTicker(uint8_t index, int targetPresetNum) {
   
   display.display(); 
   lastDrawnPresetNumForSlot[index] = targetPresetNum;
-  lastDrawnScrollOffset = scrollOffset;
+  lastDrawnScrollOffset[index] = scrollOffset;
 }
 
 void drawSlot(uint8_t index, bool force) {
@@ -276,7 +276,7 @@ void drawSlot(uint8_t index, bool force) {
       drawCenteredText("---", 3);
       display.display();
     } else {
-      drawPresetTicker(index, targetPresetNum);
+      drawPresetTicker(index, targetPresetNum, force);
     }
   }
 }
@@ -309,6 +309,13 @@ void setupHardwareButtons() {
   }
 }
 
+void setCurrentPresetLocal(PresetNumber number) {
+  currentPresetNumber = number;
+  const char* name = (number >= 0 && number <= 500) ? presetRamCache[number] : "---";
+  strncpy(currentPresetName, name, sizeof(currentPresetName) - 1);
+  currentPresetName[sizeof(currentPresetName) - 1] = '\0';
+}
+
 void toggleSlot(uint8_t index) {
   if (index >= NUM_SWITCHES) return;
   
@@ -333,7 +340,7 @@ void toggleSlot(uint8_t index) {
     if (targetPresetNum >= 0 && targetPresetNum <= 500) {
       scrollOffset = 0; 
       Axe.sendPresetChange(targetPresetNum);
-      currentPresetNumber = targetPresetNum;
+      setCurrentPresetLocal(targetPresetNum);
       requestAllSceneNames();
       drawAllSlots(true);
     }
@@ -439,6 +446,7 @@ void requestAllSceneNames() {
 void onPresetNameChanged(const PresetNumber number, const char* name, const byte length) {
   currentPresetNumber = number; 
   strncpy(currentPresetName, name, sizeof(currentPresetName) - 1);
+  currentPresetName[sizeof(currentPresetName) - 1] = '\0';
   
   if (number >= 0 && number <= 500) {
     if (strcmp(presetRamCache[number], currentPresetName) != 0) { 
@@ -940,7 +948,7 @@ void setupWebServer() {
       if (directPreset >= 0 && directPreset <= 500) {
         scrollOffset = 0;
         Axe.sendPresetChange(directPreset);
-        currentPresetNumber = directPreset;
+        setCurrentPresetLocal(directPreset);
         currentSceneNumber = 1; 
         setCurrentSceneLocal(1);
         Axe.requestPresetDetails();
