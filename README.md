@@ -2,6 +2,22 @@
 
 ![MidiFootController](docs/images/FootController001.JPEG)
 
+## Funktionen am Fussschalter
+
+Man kann zwischen drei Modi umschalten.
+
+1. Effektmodus - Defaultmodus
+2. Szenenmodus - Fusstaster1-HOLD (länger drücken)
+3. Presetmodus - Fusstaster2-HOLD 
+
+#### Weitere Funktionen:
+
+- Fusstaster 5-HOLD --> Preset +1
+- Fusstaster 6-HOLD --> Preset -1
+
+
+
+
 ## Weboberfläche
 
 ### Seite "Spielen":
