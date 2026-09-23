@@ -32,13 +32,19 @@ void executeCommand(const Command& command) {
     case CommandType::ScanDeep: startScan(true); break;
     case CommandType::ScanStop: stopScan(); lastOperation = "Scan gestoppt"; break;
     case CommandType::Save: savePresetCache(); break;
+    case CommandType::FavoriteToggle: toggleFavorite(command.value); break;
+    case CommandType::FavoriteMove: moveFavorite(uint8_t(command.value), command.secondary); break;
+    case CommandType::FavoriteMode: setFavoritePresetMode(command.value != 0); break;
   }
 }
 void toggleSlot(uint8_t index) {
   if (index >= NUM_SWITCHES) return;
   if (currentMode == MODE_EFFECTS) executeCommand({CommandType::Effect, index});
   else if (currentMode == MODE_SCENES) executeCommand({CommandType::Scene, index + 1});
-  else if (validPreset(currentPresetNumber)) executeCommand({CommandType::Preset, currentPresetNumber + int(index) - 2});
+  else {
+    const int target = presetForSwitch(index);
+    if (validPreset(target)) executeCommand({CommandType::Preset, target});
+  }
 }
 void checkHardwareButtons() {
   if (!buttonsReady) return;

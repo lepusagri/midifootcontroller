@@ -60,6 +60,24 @@ inline bool parseUnsigned(const char* text, int maximum, int& result) {
 inline bool scanTimedOut(uint32_t now, uint32_t started, uint32_t timeout) {
   return uint32_t(now - started) >= timeout;
 }
+inline int favoritePresetForSwitch(int currentPreset, unsigned index, unsigned switchCount,
+                                   bool favoriteModeEnabled, const int* favorites,
+                                   int presetCount) {
+  if (index >= switchCount) return -1;
+  bool hasFavorite = false;
+  if (favoriteModeEnabled && favorites) {
+    for (unsigned slot = 0; slot < switchCount; ++slot) {
+      if (favorites[slot] >= 0 && favorites[slot] < presetCount) { hasFavorite = true; break; }
+    }
+  }
+  if (hasFavorite) {
+    const int favorite = favorites[index];
+    return favorite >= 0 && favorite < presetCount ? favorite : -1;
+  }
+  const int relative = currentPreset + static_cast<int>(index) - 2;
+  return currentPreset >= 0 && currentPreset < presetCount && relative >= 0 && relative < presetCount
+    ? relative : -1;
+}
 enum class ScanDecision { Wait, Received, Timeout };
 inline ScanDecision scanDecision(bool received, uint32_t now, uint32_t started) {
   if (received && uint32_t(now - started) >= 500) return ScanDecision::Received;

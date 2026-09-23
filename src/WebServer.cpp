@@ -36,6 +36,15 @@ void publishWebState() {
   json += ",\"sceneNumber\":" + String(currentSceneNumber);
   json += ",\"sceneName\":" + jsonString(currentSceneName);
   json += ",\"message\":" + jsonString(lastOperation.c_str());
+  json += ",\"favoriteModeEnabled\":" + String(favoritePresetModeEnabled ? "true" : "false");
+  json += ",\"favoriteModeActive\":" + String(usesFavoritePresetMode() ? "true" : "false");
+  json += ",\"favoritesRevision\":" + String(favoritesRevision);
+  json += ",\"favorites\":[";
+  for (int i = 0; i < NUM_SWITCHES; ++i) {
+    if (i) json += ',';
+    json += String(favoritePresets[i]);
+  }
+  json += ']';
   const char* mode = currentMode == MODE_EFFECTS ? "effects" : currentMode == MODE_SCENES ? "scenes" : "presets";
   json += ",\"mode\":" + jsonString(mode);
   json += ",\"scenes\":[";
@@ -102,7 +111,11 @@ void setupWebServer() {
   snapshotMutex = xSemaphoreCreateMutex();
   publishWebState();
   server.on("/", HTTP_GET, [](AsyncWebServerRequest* r) {
-    auto* response = r->beginResponse(200, "text/html; charset=utf-8", htmlPage());
+    auto* response = r->beginResponse(
+      200,
+      "text/html; charset=utf-8",
+      reinterpret_cast<const uint8_t*>(WEB_PAGE),
+      WEB_PAGE_LENGTH);
     response->addHeader("Cache-Control", "no-store");
     r->send(response);
   });
@@ -132,6 +145,25 @@ void setupWebServer() {
     enqueue(r, {type, 0});
   });
   server.on("/api/save", HTTP_POST, [](AsyncWebServerRequest* r) { enqueue(r, {CommandType::Save, 0}); });
+  server.on("/api/favorite/toggle", HTTP_POST, [](AsyncWebServerRequest* r) {
+    int value;
+    if (numberParam(r, "number", 0, LAST_PRESET, value)) enqueue(r, {CommandType::FavoriteToggle, value});
+  });
+  server.on("/api/favorite/move", HTTP_POST, [](AsyncWebServerRequest* r) {
+    int slot;
+    int direction;
+    auto* parameter = r->getParam("direction");
+    const String value = parameter ? parameter->value() : "";
+    if (!numberParam(r, "slot", 0, NUM_SWITCHES - 1, slot)) return;
+    if (value == "-1") direction = -1;
+    else if (value == "1") direction = 1;
+    else { r->send(400, "application/json", "{\"error\":\"Ungueltige Richtung\"}"); return; }
+    enqueue(r, {CommandType::FavoriteMove, slot, direction});
+  });
+  server.on("/api/favorite/mode", HTTP_POST, [](AsyncWebServerRequest* r) {
+    int value;
+    if (numberParam(r, "enabled", 0, 1, value)) enqueue(r, {CommandType::FavoriteMode, value});
+  });
   server.on("/api/scan/start", HTTP_POST, [](AsyncWebServerRequest* r) {
     auto* parameter = r->getParam("mode");
     String value = parameter ? parameter->value() : "";

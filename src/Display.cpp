@@ -30,7 +30,8 @@ void drawPresetTicker(uint8_t index, int targetPresetNum, bool force = false) {
   display.clearDisplay();
   String nameToDisplay = "";
   
-  if (index == 2) {
+  const bool isCurrent = targetPresetNum == currentPresetNumber;
+  if (isCurrent) {
     nameToDisplay = String(currentPresetName);
   } else {
     if (targetPresetNum >= 0 && targetPresetNum <= 500) {
@@ -39,7 +40,7 @@ void drawPresetTicker(uint8_t index, int targetPresetNum, bool force = false) {
   }
   nameToDisplay.trim();
 
-  if (index == 2) {
+  if (isCurrent) {
     display.fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, SSD1306_WHITE);
     display.setTextColor(SSD1306_BLACK);
     
@@ -159,8 +160,7 @@ void drawSlot(uint8_t index, bool force) {
     display.display();
   }
   else if (currentMode == MODE_PRESETS) {
-    int relativeOffset = (int)index - 2; 
-    int targetPresetNum = (int)currentPresetNumber + relativeOffset;
+    const int targetPresetNum = presetForSwitch(index);
     
     if (!validPreset(currentPresetNumber) || !validPreset(targetPresetNum)) {
       display.clearDisplay();
@@ -205,9 +205,9 @@ void updateDisplays(unsigned long now) {
   lastScrollTime = now;
   ++scrollOffset;
   for (uint8_t i = 0; i < NUM_SWITCHES; ++i) {
-    int target = currentPresetNumber + int(i) - 2;
-    if (!displayReady[i] || !validPreset(currentPresetNumber) || !validPreset(target)) continue;
-    const char* name = i == 2 ? currentPresetName : presetRamCache[target];
+    const int target = presetForSwitch(i);
+    if (!displayReady[i] || !validPreset(target)) continue;
+    const char* name = target == currentPresetNumber ? currentPresetName : presetRamCache[target];
     if (strlen(name) <= 10) continue; // Static labels need no periodic I2C transfer.
     if (!selectDisplay(i)) continue;
     drawPresetTicker(i, target);

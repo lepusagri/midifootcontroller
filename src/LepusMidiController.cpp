@@ -22,6 +22,7 @@ void setup() {
   commandQueue = xQueueCreate(16, sizeof(Command));
   if (!commandQueue) Serial.println("Befehlsqueue konnte nicht angelegt werden");
   loadPresetCache();
+  loadFavoriteSettings();
   setupDisplays();
   setupHardwareButtons();
   setupMidi();

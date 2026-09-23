@@ -60,6 +60,14 @@ int main() {
   assert(scanDecision(true, 500, 0) == ScanDecision::Received); // Empty names also count as a response.
   assert(scanDecision(true, 499, 0) == ScanDecision::Wait);
   assert(scanDecision(false, 1490, UINT32_MAX - 9) == ScanDecision::Timeout);
+  const int favorites[] = {12, -1, 88, 3, -1, 500};
+  assert(favoritePresetForSwitch(100, 0, 6, true, favorites, 501) == 12);
+  assert(favoritePresetForSwitch(100, 1, 6, true, favorites, 501) == -1);
+  assert(favoritePresetForSwitch(100, 5, 6, true, favorites, 501) == 500);
+  assert(favoritePresetForSwitch(100, 0, 6, false, favorites, 501) == 98);
+  const int emptyFavorites[] = {-1, -1, -1, -1, -1, -1};
+  assert(favoritePresetForSwitch(100, 5, 6, true, emptyFavorites, 501) == 103);
+  assert(favoritePresetForSwitch(0, 0, 6, false, favorites, 501) == -1);
   std::string json;
   appendJsonString(json, "Clean \"Wide\"\\Path\n\t");
   assert(json == "\"Clean \\\"Wide\\\"\\\\Path\\u000a\\u0009\"");

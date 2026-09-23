@@ -16,9 +16,15 @@ Empfohlene Struktur:
 1. Kopfbereich mit „Lepus“, Verbindungszustand und aktueller Betriebsart.
 2. Deutlich sichtbare aktuelle Presetnummer, Presetname und aktive Szene.
 3. Spielansicht: Szenen und die sechs Effekte direkt darunter; Preset −/+ in Reichweite.
-4. Presets: Suche nach Nummer oder Name, Liste mit markiertem aktiven Preset und
-   kompakter Direkteingabe anstelle der großen dreispaltigen Zahlenwalze.
-5. Verwaltung: Namen speichern, Smart-/Deep-Scan, Fortschrittsbalken und Stoppen.
+4. Presets: sechs geordnete Favoritenplätze, Suche nach Nummer oder Name, Liste mit
+   markiertem aktiven Preset und kompakter Direkteingabe.
+5. Verwaltung: Favoriten-Presetmodus aktivieren, Namen speichern, Smart-/Deep-Scan,
+   Fortschrittsbalken und Stoppen.
+
+Favoriten werden über den Stern in der Presetliste in den ersten freien Platz gelegt.
+Die sechs Plätze entsprechen direkt den sechs Fußtastern und können verschoben oder
+einzeln geleert werden. Ist der Favoritenmodus deaktiviert oder das Set vollständig
+leer, bleibt die bisherige relative Presetbelegung erhalten.
 
 Auf breiten Bildschirmen können Presetliste und Spielansicht nebeneinander stehen.
 Auf dem Handy reichen drei Ansichten „Spielen“, „Presets“, „Verwaltung“; das aktive

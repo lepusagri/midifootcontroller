@@ -9,6 +9,7 @@ let presets = [];
 let cacheRevision = -1;
 let presetCount = 501;
 let activePreset = -1;
+let renderedFavoritesRevision = -1;
 let actionVersion = 0;
 let inputEdited = false;
 let uiError = '';
@@ -54,7 +55,13 @@ function setControls() {
   const blocked = commandBlocked();
   for (const id of ['preset-down', 'preset-up']) el(id).disabled = blocked || lastState.presetNumber < 0;
   el('go-btn').disabled = blocked;
-  for (const row of document.querySelectorAll('.preset-row')) row.disabled = blocked;
+  const favoritesFull = Array.isArray(lastState?.favorites) && lastState.favorites.every(number => number >= 0);
+  for (const button of document.querySelectorAll('.preset-select')) button.disabled = blocked;
+  for (const button of document.querySelectorAll('.favorite-toggle')) {
+    button.disabled = blocked || (favoritesFull && button.getAttribute('aria-pressed') !== 'true');
+  }
+  for (const button of document.querySelectorAll('.favorite-slot-actions button')) button.disabled = blocked || button.dataset.available === 'false';
+  el('favorite-mode-btn').disabled = blocked;
   for (const button of document.querySelectorAll('#scenegrid button, #grid button')) {
     button.disabled = blocked || !lastState.ready || button.dataset.available === 'false';
   }
@@ -130,6 +137,67 @@ function presetLabel(preset) {
   if (preset.state === 2) return 'Keine Antwort';
   return preset.name.trim() || 'Leeres Preset';
 }
+function isFavorite(number) { return Array.isArray(lastState?.favorites) && lastState.favorites.includes(number); }
+async function toggleFavorite(number) {
+  if (commandBlocked()) return;
+  await sendAction(`/api/favorite/toggle?number=${number}`);
+}
+async function moveFavorite(slot, direction) {
+  if (commandBlocked()) return;
+  await sendAction(`/api/favorite/move?slot=${slot}&direction=${direction}`);
+}
+function updateFavoriteButtons() {
+  for (const button of document.querySelectorAll('.favorite-toggle')) {
+    const number = Number(button.dataset.number);
+    const favorite = isFavorite(number);
+    button.setAttribute('aria-pressed', String(favorite));
+    button.setAttribute('aria-label', favorite ? `Preset ${number} aus Favoriten entfernen` : `Preset ${number} zu Favoriten hinzufügen`);
+    button.textContent = favorite ? '★' : '☆';
+  }
+}
+function renderFavorites() {
+  const parent = el('favorites-grid');
+  const favorites = Array.isArray(lastState?.favorites) ? lastState.favorites : [];
+  const fragment = document.createDocumentFragment();
+  favorites.forEach((number, slot) => {
+    const card = document.createElement('div');
+    card.className = 'favorite-slot';
+    const main = document.createElement('div');
+    main.className = 'favorite-slot-main';
+    const position = document.createElement('span');
+    position.className = 'favorite-slot-number';
+    position.textContent = `${slot + 1}.`;
+    const name = document.createElement('span');
+    name.className = 'favorite-slot-name';
+    const valid = Number.isInteger(number) && number >= 0 && number < presetCount;
+    name.textContent = valid ? `${String(number).padStart(3, '0')} · ${presets[number] ? presetLabel(presets[number]) : 'Name unbekannt'}` : 'Nicht belegt';
+    main.append(position, name);
+    const actions = document.createElement('div');
+    actions.className = 'favorite-slot-actions';
+    for (const [label, direction] of [['←', -1], ['→', 1]]) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = label;
+      button.dataset.available = String(valid && slot + direction >= 0 && slot + direction < favorites.length);
+      button.setAttribute('aria-label', `Favorit auf Platz ${slot + 1} ${direction < 0 ? 'nach links' : 'nach rechts'} verschieben`);
+      button.onclick = () => moveFavorite(slot, direction);
+      actions.appendChild(button);
+    }
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.textContent = '×';
+    remove.dataset.available = String(valid);
+    remove.setAttribute('aria-label', `Favorit auf Platz ${slot + 1} entfernen`);
+    remove.onclick = () => toggleFavorite(number);
+    actions.appendChild(remove);
+    card.append(main, actions);
+    fragment.appendChild(card);
+  });
+  parent.replaceChildren(fragment);
+  text(el('favorite-count'), `${favorites.filter(number => number >= 0).length} / ${favorites.length || 6}`);
+  updateFavoriteButtons();
+  setControls();
+}
 function searchKey(value) { return String(value).toLocaleLowerCase('de').normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
 function renderPresetList(resetScroll = false) {
   const list = el('preset-list');
@@ -143,9 +211,12 @@ function renderPresetList(resetScroll = false) {
     const label = presetLabel(preset);
     if (query && !searchKey(`${padded} ${label}`).includes(query)) return;
     ++matches;
+    const row = document.createElement('div');
+    row.className = 'preset-row';
+    row.dataset.number = String(number);
     const button = document.createElement('button');
     button.type = 'button';
-    button.className = 'preset-row';
+    button.className = 'preset-select';
     button.dataset.number = String(number);
     button.setAttribute('aria-label', `Preset ${number}: ${label}`);
     for (const [className, value] of [['row-number', padded], ['row-name', label], ['row-state', '']]) {
@@ -155,7 +226,13 @@ function renderPresetList(resetScroll = false) {
       button.appendChild(span);
     }
     button.onclick = () => selectPreset(number);
-    fragment.appendChild(button);
+    const favorite = document.createElement('button');
+    favorite.type = 'button';
+    favorite.className = 'favorite-toggle';
+    favorite.dataset.number = String(number);
+    favorite.onclick = () => toggleFavorite(number);
+    row.append(button, favorite);
+    fragment.appendChild(row);
   });
   if (!matches) {
     const empty = document.createElement('p');
@@ -167,6 +244,7 @@ function renderPresetList(resetScroll = false) {
   list.setAttribute('aria-busy', 'false');
   text(el('preset-count'), query ? `${matches} Treffer` : `${presets.length} Presets`);
   updateActivePreset();
+  updateFavoriteButtons();
   list.scrollTop = resetScroll ? 0 : previousScroll;
   if (focusedNumber !== undefined) list.querySelector(`[data-number="${focusedNumber}"]`)?.focus({preventScroll:true});
   setControls();
@@ -175,7 +253,7 @@ function updateActivePreset() {
   for (const row of document.querySelectorAll('.preset-row')) {
     const active = Number(row.dataset.number) === lastState?.presetNumber;
     row.setAttribute('aria-current', String(active));
-    text(row.lastElementChild, active ? 'Aktiv' : '');
+    text(row.querySelector('.row-state'), active ? 'Aktiv' : '');
   }
 }
 function centerActivePreset() {
@@ -192,6 +270,7 @@ async function refreshCache(revision) {
   presets = data.presets;
   cacheRevision = data.revision;
   renderPresetList();
+  renderFavorites();
   if (first) centerActivePreset();
 }
 
@@ -240,6 +319,17 @@ function renderState(state) {
   text(el('scene'), state.sceneNumber >= 1 ? `Szene ${state.sceneNumber} · ${state.sceneName.trim() || 'Ohne Namen'}` : 'Noch keine aktive Szene');
   const mode = {effects:'Effekte', scenes:'Szenen', presets:'Presets'}[state.mode] || '—';
   text(el('device-mode'), `Modus: ${mode}`);
+  const favoriteModeText = !state.favoriteModeEnabled ? 'Relativer Presetmodus ist aktiv.'
+    : state.favoriteModeActive ? 'Die sechs Favoriten sind den Fußtastern fest zugeordnet.'
+    : 'Favoritenmodus ist aktiviert, aber noch kein Favorit belegt. Der relative Modus bleibt aktiv.';
+  text(el('favorite-mode-state'), favoriteModeText);
+  const modeButton = el('favorite-mode-btn');
+  modeButton.setAttribute('aria-pressed', String(!!state.favoriteModeEnabled));
+  text(modeButton, state.favoriteModeEnabled ? 'Deaktivieren' : 'Aktivieren');
+  if (renderedFavoritesRevision !== state.favoritesRevision) {
+    renderedFavoritesRevision = state.favoritesRevision;
+    renderFavorites();
+  }
   text(el('scene-count'), `${state.sceneNumber >= 1 ? state.sceneNumber : '—'} / ${state.scenes.length}`);
   updateButtons('scenegrid', state.scenes, true);
   updateButtons('grid', state.slots, false);
@@ -265,7 +355,7 @@ async function loadStatus() {
   try {
     const state = await api('/api/status');
     if (version !== actionVersion) return;
-    if (!Array.isArray(state.scenes) || !Array.isArray(state.slots) || !Number.isInteger(state.presetCount)) throw new Error('Ungültigen Gerätestatus empfangen.');
+    if (!Array.isArray(state.scenes) || !Array.isArray(state.slots) || !Array.isArray(state.favorites) || state.favorites.length !== 6 || !Number.isInteger(state.presetCount)) throw new Error('Ungültigen Gerätestatus empfangen.');
     lastState = state;
     presetCount = state.presetCount;
     online = true;
@@ -299,6 +389,9 @@ async function startScan(type) {
 el('preset-down').onclick = () => { if (!commandBlocked()) sendAction('/api/command?cmd=preset_down'); };
 el('preset-up').onclick = () => { if (!commandBlocked()) sendAction('/api/command?cmd=preset_up'); };
 el('save-flash-btn').onclick = () => sendAction('/api/save');
+el('favorite-mode-btn').onclick = () => {
+  if (!commandBlocked()) sendAction(`/api/favorite/mode?enabled=${lastState.favoriteModeEnabled ? 0 : 1}`);
+};
 el('scan-smart-btn').onclick = () => startScan('smart');
 el('scan-deep-btn').onclick = () => startScan('deep');
 el('scan-stop-btn').onclick = () => sendAction('/api/scan/stop');
