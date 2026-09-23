@@ -1,4 +1,8 @@
-# Lepus MIDI Foot Controller
+# Lepus MIDI Foot Controller - ESP32 S3 Version
+
+Die ESP32-S3 Version kann auch noch als Midi-Controller für andere USB-Midi-Geräten genutzt werden. Man kann dann zukünftig einen Raspberry-Pi5 mit der Software Pipedal damit steuern. Auch PlugIns (NeuralDSP) am PC könnte man damit dann steuern.
+
+
 
 ![MidiFootController](docs/images/FootController001.JPEG)
 
