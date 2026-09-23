@@ -1,12 +1,13 @@
-# Vorschlag für die nächste Gestaltung der Weboberfläche
+# Gestaltung der Weboberfläche
 
-Die funktional korrigierte Oberfläche wurde bei 1440 × 1000 und 390 × 844 Pixeln
-mit simulierten Gerätedaten geprüft. Dieser Vorschlag ist noch kein umgesetztes
-Redesign.
+Der folgende Vorschlag wurde in `src/web.html` und `src/web.js` umgesetzt.
+Gestaltungsreferenz und Prüfstand: [design/IMPLEMENTATION.md](design/IMPLEMENTATION.md).
+Die Browserprüfung mit simulierten Gerätedaten deckt zentrale Bedienabläufe ab;
+die abschließende Prüfung nach der letzten Typografieanpassung ist noch offen.
 
 ## Bedienung zuerst
 
-Die heutige Seite ist eine lange, schmale Spalte. Scan- und Speicherfunktionen
+Die ursprüngliche Seite war eine lange, schmale Spalte. Scan- und Speicherfunktionen
 stehen vor den täglich benötigten Szenen und Effekten. Auf dem Handy liegen die
 Effektbuttons ungefähr zwei Bildschirmhöhen unter dem Einstieg.
 

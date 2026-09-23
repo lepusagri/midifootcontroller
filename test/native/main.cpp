@@ -34,6 +34,22 @@ static void sceneName(int number, const std::string& name) {
   receive(0x0e, data);
 }
 int main() {
+  const auto paddedScene = makeSceneLabel("Clean                           ", 1);
+  assert(std::string(paddedScene.lines[0]) == "Clean" && paddedScene.textSize == 2);
+  for (const char* empty : {"", "                                ", " ---  "}) {
+    assert(std::string(makeSceneLabel(empty, 6).lines[0]) == "SCN 6");
+  }
+  assert(std::string(makeSceneLabel(nullptr, 2).lines[0]) == "SCN 2");
+  for (size_t length = 1; length <= 32; ++length) {
+    const std::string name(length, 'X');
+    const auto label = makeSceneLabel(name.c_str(), 1);
+    assert(std::string(label.lines[0]) + label.lines[1] == name);
+    for (unsigned line = 0; line < label.lineCount; ++line)
+      assert(strlen(label.lines[line]) * 6 * label.textSize <= 128);
+  }
+  const auto words = makeSceneLabel("Long scene name with two lines", 3);
+  assert(std::string(words.lines[0]) == "Long scene name with");
+  assert(std::string(words.lines[1]) == "two lines");
   int number = -1;
   assert(parseUnsigned("500", 500, number) && number == 500);
   assert(parseUnsigned("000", 500, number) && number == 0);

@@ -33,3 +33,29 @@ Bildartefakte; Zustandsmarkierungen auch an den inaktiven Szenen; echte 501 Eint
 statt einer statischen Liste mit sieben Beispielen; Verwaltung und Mobilansichten
 werden entsprechend dem beauftragten Funktionsumfang ergänzt. Keine erfundenen
 Presetnamen oder Kennzahlen in der Firmware.
+
+## Umsetzungs- und Prüfstand
+
+Die Oberfläche ist in `src/web.html` und `src/web.js` umgesetzt. Die letzte
+Typografieanpassung verwendet unter anderem 46px für den Presettitel, 28px für
+Abschnittstitel und Courier New für die große Presetnummer; mobile Größen sind
+separat begrenzt.
+
+Abgleich des ersten Desktop-Screenshots mit der generierten Vorlage:
+
+| Bereich | Ergebnis / Anpassung |
+| --- | --- |
+| Aufbau | Kopfzeile, Presetband und zweispaltige Spielansicht entsprechen der Vorlage. |
+| Farben | Dunkle Flächen und türkis markierte aktive Zustände übernommen. |
+| Typografie | Zunächst zu klein; Titel, Navigation und Schaltertexte anschließend vergrößert. |
+| Nummern | Monospace-Schrift anschließend auf Courier New umgestellt. |
+| Abstände | Abstand zum Effektbereich und Höhe der Presetliste anschließend erhöht. |
+| Mobil | Erste Aufnahme bei 390 × 844 zeigt Szenen und Effekte ohne horizontales Scrollen. |
+
+Browserprüfung mit simulierten Gerätedaten: Presetwahl, Suche, Eingabevalidierung,
+Szenen-/Effektbefehle, Speichern, Scan/Stop und mehrere Fehler-/Wiederverbindungsfälle
+wurden erfolgreich durchlaufen. Der Lauf endete an einer mobilen Navigationsprüfung,
+die unmittelbar nach dem Klick prüfte. Der Test wartet jetzt auf den Ansichtswechsel;
+ein erneuter Browserstart wurde vom Nutzer abgelehnt. Daher sind dieser Schritt,
+weitere schmale Ansichten und der visuelle Abgleich der letzten Anpassungen offen.
+Kein Test am physischen Controller.

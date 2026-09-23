@@ -2,6 +2,47 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <string.h>
+
+struct SceneLabel {
+  char lines[2][33] = {};
+  uint8_t textSize = 2;
+  uint8_t lineCount = 1;
+};
+
+// Default GFX font: 6 pixels per character. Keep every line inside 128 pixels.
+inline SceneLabel makeSceneLabel(const char* name, unsigned sceneNumber) {
+  SceneLabel label;
+  size_t length = 0;
+  if (name) while (length < 32 && name[length]) ++length;
+  while (length && static_cast<unsigned char>(name[length - 1]) <= ' ') --length;
+  size_t start = 0;
+  while (start < length && static_cast<unsigned char>(name[start]) <= ' ') ++start;
+  length -= start;
+  if (!length || (length == 3 && memcmp(name + start, "---", 3) == 0)) {
+    snprintf(label.lines[0], sizeof(label.lines[0]), "SCN %u", sceneNumber);
+    label.textSize = 3;
+    return label;
+  }
+  name += start;
+  if (length <= 21) {
+    memcpy(label.lines[0], name, length);
+    label.textSize = length <= 10 ? 2 : 1;
+    return label;
+  }
+  label.textSize = 1;
+  label.lineCount = 2;
+  size_t split = 21;
+  // Prefer a word boundary, provided both lines still fit.
+  for (size_t pos = 21; pos >= length - 21; --pos) {
+    if (name[pos] == ' ') { split = pos; break; }
+  }
+  memcpy(label.lines[0], name, split);
+  size_t next = split;
+  while (next < length && name[next] == ' ') ++next;
+  memcpy(label.lines[1], name + next, length - next);
+  return label;
+}
 
 // These helpers have no Arduino dependencies and can be exercised on the host.
 inline bool parseUnsigned(const char* text, int maximum, int& result) {

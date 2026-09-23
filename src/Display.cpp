@@ -1,4 +1,5 @@
 #include "Controller.h"
+#include "ControllerLogic.h"
 
 static bool displayReady[NUM_SWITCHES] = {};
 static ControllerMode lastDrawnMode = MODE_EFFECTS;
@@ -141,11 +142,19 @@ void drawSlot(uint8_t index, bool force) {
       display.setTextColor(SSD1306_WHITE);
     }
 
-    if (strlen(sceneNames[index]) > 0 && strcmp(sceneNames[index], "---") != 0) {
-      drawCenteredText(sceneNames[index], 2);
+    const SceneLabel label = makeSceneLabel(sceneNames[index], sceneNumForSlot);
+    if (label.lineCount == 1) {
+      drawCenteredText(label.lines[0], label.textSize);
     } else {
-      String fallbackLabel = "SCN " + String(sceneNumForSlot);
-      drawCenteredText(fallbackLabel.c_str(), 3);
+      display.setTextSize(label.textSize);
+      const int lineHeight = 8 * label.textSize;
+      for (uint8_t line = 0; line < label.lineCount; ++line) {
+        int16_t x1, y1; uint16_t w, h;
+        display.getTextBounds(label.lines[line], 0, 0, &x1, &y1, &w, &h);
+        display.setCursor((SCREEN_WIDTH - w) / 2,
+                          (SCREEN_HEIGHT - label.lineCount * lineHeight) / 2 + line * lineHeight);
+        display.print(label.lines[line]);
+      }
     }
     display.display();
   }
