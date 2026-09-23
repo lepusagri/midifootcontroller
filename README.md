@@ -1,5 +1,23 @@
 # Lepus MIDI Foot Controller
 
+![MidiFootController](docs/images/FootController001.JPEG)
+
+## Weboberfläche
+
+### Seite "Spielen":
+![](docs/images/Screenshot001.png)
+
+
+### Seite "Presets":
+![](docs/images/Screenshot002.png)
+
+
+### Seite "Verwaltung":
+![](docs/images/Screenshot003.png)
+
+
+
+
 ## PlatformIO
 
 Das Projekt ist für ein **DOIT ESP32 DevKit V1** eingerichtet.
@@ -68,3 +86,9 @@ Preset-/Szenenwechsel, Smart-/Deep-Scan mit Stoppen, Speichern und Neustart,
 WLAN-Ausfall und Wiederverbindung. Der Brownout-Schutz bleibt aktiviert.
 
 Vorschläge für die nächste Gestaltung: [docs/WEB_DESIGN.md](docs/WEB_DESIGN.md).
+
+## Platine
+
+Wurde mit KiCad geplant. Bild meiner ersten Version. 
+
+![MidiFootController](docs/images/PCB.JPEG)
