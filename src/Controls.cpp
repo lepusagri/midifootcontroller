@@ -37,13 +37,13 @@ void executeCommand(const Command& command) {
     case CommandType::FavoriteMode: setFavoritePresetMode(command.value != 0); break;
     case CommandType::CustomMidiTrigger: triggerCustomMidi(command.value); break;
     case CommandType::CustomMidiSetMode:
-      setCustomMidiMode(command.value, static_cast<CustomMidiMode>(command.secondary)); break;
-    case CommandType::CustomMidiSetName: setCustomMidiName(command.value, command.name); break;
+      setCustomMidiMode(command.value, command.secondary, static_cast<CustomMidiMode>(command.third)); break;
+    case CommandType::CustomMidiSetName: setCustomMidiName(command.value, command.secondary, command.name); break;
     case CommandType::CustomMidiSetCommand:
-      setCustomMidiCommand(command.value, command.secondary, command.third,
-                           command.fourth, command.fifth, command.sixth); break;
+      setCustomMidiCommand(command.value, command.secondary, command.third, command.fourth,
+                           command.fifth, command.sixth, command.seventh); break;
     case CommandType::CustomMidiRemoveCommand:
-      removeCustomMidiCommand(command.value, command.secondary, command.third); break;
+      removeCustomMidiCommand(command.value, command.secondary, command.third, command.fourth); break;
     case CommandType::CustomMidiSave: saveCustomMidiConfiguration(); break;
   }
 }
@@ -97,10 +97,13 @@ void checkHardwareButtons() {
     auto& slot = slots[i];
     const bool reading = slot.lastButtonState;
     if (!reading && slot.isPressed && !slot.holdExecuted && now - slot.pressStartTime >= HOLD_DURATION_MS) {
-      if (i == 2) {
-        if (currentMode == MODE_CUSTOM_MIDI) currentMode = modeBeforeCustomMidi;
+      if (i == 2 || i == 3) {
+        const uint8_t uiSet = i - 2;
+        if (currentMode == MODE_CUSTOM_MIDI && activeCustomMidiSet == uiSet)
+          currentMode = modeBeforeCustomMidi;
         else {
-          modeBeforeCustomMidi = currentMode;
+          if (currentMode != MODE_CUSTOM_MIDI) modeBeforeCustomMidi = currentMode;
+          activeCustomMidiSet = uiSet;
           currentMode = MODE_CUSTOM_MIDI;
         }
         if (currentMode == MODE_SCENES) requestAllSceneNames();

@@ -46,28 +46,34 @@ void publishWebState() {
   json += ",\"mode\":" + jsonString(mode);
   json += ",\"customMidiRevision\":" + String(customMidiRevision);
   json += ",\"customMidiDirty\":" + String(customMidiDirty ? "true" : "false");
+  json += ",\"activeCustomMidiSet\":" + String(activeCustomMidiSet);
   json += ",\"customMidi\":[";
-  for (uint8_t slot = 0; slot < NUM_SWITCHES; ++slot) {
-    if (slot) json += ',';
-    const CustomMidiSwitch& setting = customMidiSwitches[slot];
-    json += "{\"mode\":\"";
-    json += setting.mode == CustomMidiMode::Alternate ? "alternate" : "single";
-    json += "\",\"name\":" + jsonString(setting.name);
-    json += ",\"nextBank\":" + String(setting.nextBank);
-    json += ",\"banks\":[";
-    for (uint8_t bank = 0; bank < CUSTOM_MIDI_BANKS; ++bank) {
-      if (bank) json += ',';
-      json += '[';
-      for (uint8_t index = 0; index < setting.count[bank]; ++index) {
-        if (index) json += ',';
-        const CustomMidiCommand& midi = setting.commands[bank][index];
-        json += "{\"cmd\":\"CC\",\"channel\":" + String(midi.channel);
-        json += ",\"number\":" + String(midi.number);
-        json += ",\"value\":" + String(midi.value) + '}';
+  for (uint8_t set = 0; set < CUSTOM_MIDI_SETS; ++set) {
+    if (set) json += ',';
+    json += '[';
+    for (uint8_t slot = 0; slot < NUM_SWITCHES; ++slot) {
+      if (slot) json += ',';
+      const CustomMidiSwitch& setting = customMidiSwitches[set][slot];
+      json += "{\"mode\":\"";
+      json += setting.mode == CustomMidiMode::Alternate ? "alternate" : "single";
+      json += "\",\"name\":" + jsonString(setting.name);
+      json += ",\"nextBank\":" + String(setting.nextBank);
+      json += ",\"banks\":[";
+      for (uint8_t bank = 0; bank < CUSTOM_MIDI_BANKS; ++bank) {
+        if (bank) json += ',';
+        json += '[';
+        for (uint8_t index = 0; index < setting.count[bank]; ++index) {
+          if (index) json += ',';
+          const CustomMidiCommand& midi = setting.commands[bank][index];
+          json += "{\"cmd\":\"CC\",\"channel\":" + String(midi.channel);
+          json += ",\"number\":" + String(midi.number);
+          json += ",\"value\":" + String(midi.value) + '}';
+        }
+        json += ']';
       }
-      json += ']';
+      json += "]}";
     }
-    json += "]}";
+    json += ']';
   }
   json += ']';
   json += ",\"scenes\":[";
@@ -188,19 +194,21 @@ void setupWebServer() {
     if (numberParam(r, "enabled", 0, 1, value)) enqueue(r, {CommandType::FavoriteMode, value});
   });
   server.on("/api/custom-midi/mode", HTTP_POST, [](AsyncWebServerRequest* r) {
-    int slot, mode;
-    if (!numberParam(r, "slot", 0, NUM_SWITCHES - 1, slot) ||
+    int set, slot, mode;
+    if (!numberParam(r, "set", 0, CUSTOM_MIDI_SETS - 1, set) ||
+        !numberParam(r, "slot", 0, NUM_SWITCHES - 1, slot) ||
         !numberParam(r, "mode", 0, 1, mode)) return;
-    enqueue(r, {CommandType::CustomMidiSetMode, slot, mode});
+    enqueue(r, {CommandType::CustomMidiSetMode, set, slot, mode});
   });
   server.on("/api/custom-midi/name", HTTP_POST, [](AsyncWebServerRequest* r) {
     // +++++++++++++++++++++++++++++++++
-    int iSlot = 0;
+    int iSet = 0, iSlot = 0;
     const AsyncWebParameter* ptParameter = nullptr;
     String sName;
     Command tCommand{CommandType::CustomMidiSetName, 0};
     // +++++++++++++++++++++++++++++++++
-    if (!numberParam(r, "slot", 0, NUM_SWITCHES - 1, iSlot)) return;
+    if (!numberParam(r, "set", 0, CUSTOM_MIDI_SETS - 1, iSet) ||
+        !numberParam(r, "slot", 0, NUM_SWITCHES - 1, iSlot)) return;
     ptParameter = r->getParam("name");
     if (!ptParameter) { r->send(400, "application/json", "{\"error\":\"Name fehlt\"}"); return; }
     sName = ptParameter->value();
@@ -215,26 +223,29 @@ void setupWebServer() {
         return;
       }
     }
-    tCommand.value = iSlot;
+    tCommand.value = iSet;
+    tCommand.secondary = iSlot;
     memcpy(tCommand.name, sName.c_str(), sName.length() + 1);
     enqueue(r, tCommand);
   });
   server.on("/api/custom-midi/command", HTTP_POST, [](AsyncWebServerRequest* r) {
-    int slot, bank, index, channel, number, value;
-    if (!numberParam(r, "slot", 0, NUM_SWITCHES - 1, slot) ||
+    int set, slot, bank, index, channel, number, value;
+    if (!numberParam(r, "set", 0, CUSTOM_MIDI_SETS - 1, set) ||
+        !numberParam(r, "slot", 0, NUM_SWITCHES - 1, slot) ||
         !numberParam(r, "bank", 0, CUSTOM_MIDI_BANKS - 1, bank) ||
         !numberParam(r, "index", 0, 0, index) ||
         !numberParam(r, "channel", 1, 16, channel) ||
         !numberParam(r, "number", 0, 127, number) ||
         !numberParam(r, "value", 0, 127, value)) return;
-    enqueue(r, {CommandType::CustomMidiSetCommand, slot, bank, index, channel, number, value});
+    enqueue(r, {CommandType::CustomMidiSetCommand, set, slot, bank, index, channel, number, value});
   });
   server.on("/api/custom-midi/remove", HTTP_POST, [](AsyncWebServerRequest* r) {
-    int slot, bank, index;
-    if (!numberParam(r, "slot", 0, NUM_SWITCHES - 1, slot) ||
+    int set, slot, bank, index;
+    if (!numberParam(r, "set", 0, CUSTOM_MIDI_SETS - 1, set) ||
+        !numberParam(r, "slot", 0, NUM_SWITCHES - 1, slot) ||
         !numberParam(r, "bank", 0, CUSTOM_MIDI_BANKS - 1, bank) ||
         !numberParam(r, "index", 0, 0, index)) return;
-    enqueue(r, {CommandType::CustomMidiRemoveCommand, slot, bank, index});
+    enqueue(r, {CommandType::CustomMidiRemoveCommand, set, slot, bank, index});
   });
   server.on("/api/custom-midi/save", HTTP_POST, [](AsyncWebServerRequest* r) {
     enqueue(r, {CommandType::CustomMidiSave, 0});

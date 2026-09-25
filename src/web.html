@@ -118,6 +118,10 @@
     .network-form { display:grid; gap:16px; padding:24px 0; border-bottom:1px solid var(--border); }
     .custom-midi-settings { max-width:960px; width:100%; margin:0 auto; }
     .custom-midi-settings > p { color:var(--muted); margin:6px 0 18px; }
+    .custom-midi-sets { display:flex; gap:10px; margin:18px 0 24px; }
+    .custom-midi-sets button { flex:1; padding:10px 16px; }
+    .custom-midi-sets button[aria-selected="true"] { color:var(--accent); border-color:var(--accent); background:var(--active); }
+    .custom-midi-sets button[data-active="true"]::after { content:' · aktiv'; font-size:13px; }
     .custom-midi-top { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin-bottom:18px; }
     .custom-midi-top label,.midi-fields label { display:grid; gap:6px; color:var(--muted); font-size:14px; }
     .custom-midi-top select,.midi-fields select { width:100%; min-height:48px; padding:11px 14px; color:var(--text); background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); font:inherit; }
@@ -338,7 +342,12 @@
       </section>
       <section class="custom-midi-settings" id="custom-midi-settings" aria-labelledby="custom-midi-heading" hidden>
         <div class="section-heading"><h2 id="custom-midi-heading">Custom MIDI</h2></div>
-        <p>Fußtaster 3 eine Sekunde halten, um den Modus zu wechseln. Kurzes Loslassen sendet den CC-Befehl. Bei zwei Banken wechseln A und B mit jeder Betätigung. Namen und CC-Befehle werden mit „Zum Testen übernehmen“ sofort am Pedal aktiv. Erst „Alle Änderungen dauerhaft speichern“ schreibt sie in den Flash.</p>
+        <p>Fußtaster 3 oder 4 eine Sekunde halten, um das zugehörige Set zu aktivieren. Erneutes Halten desselben Tasters kehrt zum vorherigen Modus zurück. Bei zwei Banken wechseln A und B mit jeder kurzen Betätigung. Namen und CC-Befehle werden mit „Zum Testen übernehmen“ sofort am Pedal aktiv. Erst „Alle Änderungen dauerhaft speichern“ schreibt beide Sets in den Flash.</p>
+        <div class="custom-midi-sets" role="tablist" aria-label="Custom-MIDI-Sets">
+          <button type="button" id="custom-midi-set-3" role="tab" aria-selected="true" aria-controls="custom-midi-editor">Taster 3 HOLD</button>
+          <button type="button" id="custom-midi-set-4" role="tab" aria-selected="false" aria-controls="custom-midi-editor">Taster 4 HOLD</button>
+        </div>
+        <div id="custom-midi-editor" role="tabpanel" aria-labelledby="custom-midi-set-3">
         <div class="custom-midi-top">
           <label>Fußtaster<select id="custom-midi-slot"></select></label>
           <label>Stampede-Modus<select id="custom-midi-mode"><option value="single">Single step · eine Bank</option><option value="alternate">Single step · zwei Banken</option></select></label>
@@ -356,6 +365,7 @@
         <div class="midi-save">
           <p id="custom-midi-save-state" role="status">Einstellungen werden geladen …</p>
           <button class="primary" type="button" id="custom-midi-save" disabled>Alle Änderungen dauerhaft speichern</button>
+        </div>
         </div>
       </section>
     </main>

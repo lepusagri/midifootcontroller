@@ -177,7 +177,7 @@ void drawSlot(uint8_t index, bool force) {
     int16_t shX = 0, shY = 0;
     uint16_t uiWidth = 0, uiHeight = 0;
     // +++++++++++++++++++++++++++++++++
-    const CustomMidiSwitch& midi = customMidiSwitches[index];
+    const CustomMidiSwitch& midi = customMidiSwitches[activeCustomMidiSet][index];
     const uint8_t bank = midi.mode == CustomMidiMode::Alternate ? midi.nextBank : 0;
     snprintf(sDefaultName, sizeof(sDefaultName), "MIDI %u", static_cast<unsigned>(index + 1));
     const char* psName = midi.name[0] ? midi.name : sDefaultName;
@@ -189,7 +189,9 @@ void drawSlot(uint8_t index, bool force) {
     display.print(psName);
     display.setTextSize(1);
     display.setCursor(4, 26);
-    display.print(midi.mode == CustomMidiMode::Alternate ? "Naechste Bank: " : "Bank: ");
+    display.print("Set T");
+    display.print(activeCustomMidiSet + 3);
+    display.print(midi.mode == CustomMidiMode::Alternate ? "  Naechste: " : "  Bank: ");
     display.print(bank == 0 ? 'A' : 'B');
     display.setCursor(4, 42);
     if (midi.count[bank]) {

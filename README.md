@@ -4,13 +4,14 @@
 
 ## Funktionen am Fussschalter
 
-Man kann zwischen vier Modi umschalten. Kurze Aktionen werden beim Loslassen
+Man kann zwischen drei Grundmodi und zwei Custom-MIDI-Sets umschalten. Kurze Aktionen werden beim Loslassen
 ausgeführt; ein HOLD unterdrückt die kurze Aktion.
 
 1. Effektmodus - Defaultmodus
 2. Szenenmodus - Fusstaster1-HOLD (länger drücken)
 3. Presetmodus - Fusstaster2-HOLD 
-4. Custom MIDI - Fusstaster3-HOLD; ein weiterer HOLD führt zum vorherigen Modus zurück
+4. Custom MIDI Set 1 - Fusstaster3-HOLD; erneuter HOLD führt zum vorherigen Modus zurück
+5. Custom MIDI Set 2 - Fusstaster4-HOLD; erneuter HOLD führt zum vorherigen Modus zurück
 
 #### Weitere Funktionen:
 
@@ -19,14 +20,15 @@ ausgeführt; ein HOLD unterdrückt die kurze Aktion.
 - Fusstaster 5 und 6 gleichzeitig zehn Sekunden halten --> Netzwerk auf Access Point zurücksetzen
 
 Im Custom-MIDI-Modus kann jeder der sechs Fusstaster einen CC-Befehl pro
-Bank senden. Auf der Seite **Custom MIDI** werden pro Fußtaster ein OLED-Name
+Bank senden. Die Sets für Taster 3 HOLD und Taster 4 HOLD haben jeweils eigene
+Namen, Banken und CC-Belegungen. Auf der Seite **Custom MIDI** werden pro Fußtaster ein OLED-Name
 (bis zu 20 Zeichen ohne Umlaute), MIDI-Kanal (1–16), CC-Nummer und Wert
 (je 0–127) eingestellt. Ein leerer Name zeigt weiterhin „MIDI 1“ bis „MIDI 6“.
 „Single step · eine Bank“ sendet
 immer Bank A; „Single step · zwei Banken“ wechselt pro kurzem Tastendruck
 zwischen A und B. „Zum Testen übernehmen“ aktiviert eine Änderung sofort im
 Controller-RAM, damit sie mit dem Fußtaster ausprobiert werden kann. Erst
-„Alle Änderungen dauerhaft speichern“ schreibt die getestete Konfiguration
+„Alle Änderungen dauerhaft speichern“ schreibt beide getesteten Sets
 in den Flash. Ohne diesen Schritt ist sie nach einem Neustart verloren.
 
 
