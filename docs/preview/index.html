@@ -1,0 +1,1165 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Lepus · FM3 Controller</title>
+  <style>
+    :root { --bg:#101313; --surface:#1a1e1e; --border:#303737; --text:#f1f4f3; --muted:#a6b2ae; --accent:#63dbc2; --active:#17352f; --warning:#ebc37a; --danger:#f2a39c; --radius:8px; }
+    * { box-sizing:border-box; }
+    [hidden] { display:none !important; }
+    html { scroll-padding-top:160px; }
+    body { margin:0; background:var(--bg); color:var(--text); font:16px/1.45 'Segoe UI',system-ui,sans-serif; }
+    button,input,a { -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
+    button,input { font:inherit; }
+    button { min-height:44px; border:1px solid var(--border); border-radius:var(--radius); background:var(--surface); color:var(--text); cursor:pointer; transition:background .12s,border-color .12s; }
+    button:hover:not(:disabled) { background:#232b29; border-color:#596760; }
+    button:active:not(:disabled) { background:#2c3935; }
+    button:disabled { cursor:not-allowed; color:var(--muted); }
+    button:disabled:not(.unavailable) { opacity:.5; }
+    :focus-visible { outline:2px solid var(--accent); outline-offset:4px; }
+    input { width:100%; min-width:0; min-height:48px; padding:11px 14px; color:var(--text); background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); }
+    input::placeholder { color:var(--muted); opacity:1; }
+    input[aria-invalid="true"] { border-color:var(--danger); }
+    h1,h2,h3,p { margin:0; }
+    h2 { font-size:28px; line-height:1.25; font-weight:650; }
+    h3 { font-size:18px; font-weight:600; }
+    .shell { max-width:1504px; padding:0 32px; margin:auto; }
+    .topbar { display:flex; align-items:center; gap:64px; min-height:84px; }
+    .brand { font-size:40px; font-weight:750; letter-spacing:-1.5px; }
+    .view-nav { display:flex; gap:24px; align-self:stretch; }
+    .view-nav a { min-height:48px; display:flex; align-items:center; padding:0 12px; text-decoration:none; color:var(--muted); font-size:21px; border-bottom:3px solid transparent; }
+    .view-nav a[aria-current="page"] { color:var(--accent); border-color:var(--accent); font-weight:600; }
+    .view-nav a:hover { color:var(--text); }
+    .connection { margin-left:auto; display:flex; align-items:center; gap:10px; font-size:16px; white-space:nowrap; }
+    .connection::before { content:''; width:9px; height:9px; border-radius:50%; background:var(--muted); }
+    .connection[data-state="online"]::before { background:var(--accent); }
+    .connection[data-state="offline"]::before { background:var(--danger); }
+    .device-mode { color:var(--muted); font-size:16px; white-space:nowrap; margin-left:-36px; }
+    .current-preset { position:sticky; top:0; z-index:2; display:flex; align-items:center; gap:24px; min-height:140px; padding:24px; border:1px solid var(--border); border-radius:var(--radius); background:var(--bg); }
+    .preset-number { font:600 88px/1 'Courier New',monospace; letter-spacing:-5px; padding-right:28px; border-right:1px solid #48514d; }
+    .preset-details { min-width:0; flex:1; }
+    h1 { font-size:46px; font-weight:650; line-height:1.2; letter-spacing:-.7px; overflow-wrap:anywhere; }
+    .current-scene { color:var(--muted); margin-top:6px; font-size:24px; overflow-wrap:anywhere; }
+    .preset-navigation { display:flex; flex-shrink:0; gap:10px; }
+    .preset-navigation button { display:flex; align-items:center; justify-content:center; gap:12px; padding:16px 18px; background:transparent; font-size:18px; }
+    .icon { width:20px; height:20px; flex-shrink:0; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+    .workspace { display:grid; grid-template-columns:minmax(0,1.9fr) minmax(300px,1fr); gap:28px; padding-top:28px; }
+    .performance { min-width:0; padding:0 0 24px; }
+    .section-heading { display:flex; align-items:baseline; gap:16px; margin-bottom:16px; }
+    .section-heading .meta { color:var(--muted); font-size:16px; }
+    #scene-count { margin-left:auto; }
+    .scene-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; }
+    .scene-button { min-width:0; min-height:108px; padding:12px 8px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; }
+    .scene-number { color:var(--muted); font:19px 'Courier New',monospace; }
+    .scene-name { font-size:22px; font-weight:600; overflow-wrap:anywhere; }
+    .control-state { font-size:16px; font-weight:400; color:var(--muted); }
+    .scene-button .control-state { min-height:18px; }
+    .scene-button:not(.on) .control-state { visibility:hidden; }
+    .on { color:var(--accent); background:var(--active); border-color:var(--accent); }
+    .on .scene-number,.on .control-state { color:var(--accent); }
+    .on:hover:not(:disabled) { background:#20463b; border-color:var(--accent); }
+    .effects-section { margin-top:64px; }
+    .effect-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+    .effect-button { min-width:0; min-height:130px; padding:18px 20px; display:flex; flex-direction:column; align-items:flex-start; text-align:left; position:relative; }
+    .effect-code { font-size:36px; font-weight:650; line-height:1.15; }
+    .effect-name { font-size:18px; margin-top:4px; }
+    .effect-button .control-state { margin-top:5px; }
+    .effect-button::after { content:''; position:absolute; top:24px; right:20px; width:10px; height:10px; border-radius:50%; background:#89938f; }
+    .effect-button.on::after { background:var(--accent); }
+    .effect-button.unavailable { color:#99a49f; background:transparent; border-style:dashed; }
+    .effect-button.unavailable::after { background:transparent; border:1px solid var(--muted); }
+    .preset-browser { min-width:0; padding-left:28px; border-left:1px solid var(--border); }
+    .search-label { position:relative; display:block; margin-bottom:14px; }
+    .search-label .icon { position:absolute; left:14px; top:14px; color:var(--muted); }
+    .search-label input { padding-left:44px; }
+    .favorites-panel { margin-bottom:20px; padding:16px; border:1px solid var(--border); border-radius:var(--radius); background:var(--surface); }
+    .favorites-heading { display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:12px; }
+    .favorites-heading h3 { font-size:16px; }
+    .favorites-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+    .favorite-slot { min-width:0; padding:10px; border:1px solid var(--border); border-radius:var(--radius); background:var(--bg); }
+    .favorite-slot-main { display:flex; align-items:center; gap:8px; min-width:0; }
+    .favorite-slot-number { color:var(--muted); font:13px 'Courier New',monospace; }
+    .favorite-slot-name { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:14px; }
+    .favorite-slot-actions { display:flex; gap:5px; margin-top:8px; }
+    .favorite-slot-actions button { min-height:34px; flex:1; padding:4px; font-size:13px; }
+    .preset-list { overflow-y:auto; overscroll-behavior:contain; height:444px; scrollbar-color:#53635c transparent; border:1px solid var(--border); border-radius:var(--radius); }
+    .preset-row { display:grid; grid-template-columns:minmax(0,1fr) 48px; align-items:stretch; width:100%; min-height:58px; border-bottom:1px solid var(--border); background:transparent; }
+    .preset-row:last-child { border-bottom:0; }
+    .preset-select { display:grid; grid-template-columns:48px minmax(0,1fr) 42px; gap:12px; align-items:center; min-width:0; padding:12px 10px 12px 16px; text-align:left; border:0; border-radius:0; background:transparent; }
+    .favorite-toggle { min-height:0; border:0; border-left:1px solid var(--border); border-radius:0; background:transparent; color:var(--muted); font-size:24px; }
+    .favorite-toggle[aria-pressed="true"] { color:var(--warning); }
+    .row-number { font:18px 'Courier New',monospace; color:var(--muted); }
+    .row-name { overflow-wrap:anywhere; font-size:18px; }
+    .row-state { font-size:12px; color:var(--accent); text-align:right; }
+    .preset-row[aria-current="true"] { background:var(--active); color:var(--accent); }
+    .preset-row[aria-current="true"] .row-number { color:var(--accent); }
+    .preset-row button:focus-visible { outline-offset:-3px; }
+    .empty-state { padding:32px 20px; color:var(--muted); text-align:center; }
+    .direct-choice { display:flex; align-items:center; gap:12px; margin-top:24px; padding-top:24px; border-top:1px solid var(--border); }
+    .direct-choice label { font-size:14px; color:var(--muted); }
+    .direct-choice input { flex:1; width:70px; font-family:Consolas,monospace; }
+    .primary { background:var(--accent); border-color:var(--accent); color:#0d2420; font-weight:650; padding:12px 24px; }
+    .primary:hover:not(:disabled) { background:#91e9d4; color:#0d2420; border-color:#91e9d4; }
+    .primary:disabled { color:#15332b; }
+    .inline-error { color:var(--danger); font-size:14px; padding-top:8px; }
+    .workspace[data-view="presets"] { grid-template-columns:minmax(0,1fr); max-width:900px; margin:auto; }
+    .workspace[data-view="presets"] .preset-browser { padding-left:0; border-left:0; }
+    .workspace[data-view="presets"] .preset-list { height:min(480px,52vh); }
+    .workspace[data-view="spielen"] .preset-save-row { display:none; }
+    .management { max-width:960px; width:100%; margin:0 auto; }
+    .workspace[data-view="verwaltung"] { display:block; }
+    .workspace[data-view="custom-midi"] { display:block; }
+    .management-intro { color:var(--muted); margin:8px 0 24px; max-width:680px; }
+    .management-row { padding:24px 0; border-top:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; gap:32px; }
+    .management-row p { margin-top:6px; color:var(--muted); max-width:590px; font-size:15px; }
+    .management-row button { flex-shrink:0; padding:12px 20px; }
+    .network-form { display:grid; gap:16px; padding:24px 0; border-bottom:1px solid var(--border); }
+    .custom-midi-settings { max-width:960px; width:100%; margin:0 auto; }
+    .custom-midi-settings > p { color:var(--muted); margin:6px 0 18px; }
+    .custom-midi-sets { display:flex; gap:10px; margin:18px 0 24px; }
+    .custom-midi-sets button { flex:1; padding:10px 16px; }
+    .custom-midi-sets button[aria-selected="true"] { color:var(--accent); border-color:var(--accent); background:var(--active); }
+    .custom-midi-sets button[data-active="true"]::after { content:' · aktiv'; font-size:13px; }
+    .custom-midi-top { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin-bottom:18px; }
+    .custom-midi-top label,.midi-fields label { display:grid; gap:6px; color:var(--muted); font-size:14px; }
+    .custom-midi-top select,.midi-fields select { width:100%; min-height:48px; padding:11px 14px; color:var(--text); background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); font:inherit; }
+    .custom-midi-name { margin-bottom:18px; }
+    .custom-midi-name > label { display:block; margin-bottom:6px; color:var(--muted); font-size:14px; }
+    .custom-midi-name-fields { display:flex; gap:10px; }
+    .custom-midi-name-fields button { flex-shrink:0; padding:8px 14px; }
+    .custom-midi-name-note { color:var(--muted); font-size:13px; margin-top:6px; }
+    .midi-banks { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+    .midi-bank { min-width:0; padding:16px; border:1px solid var(--border); border-radius:var(--radius); }
+    .midi-bank h4 { margin:0 0 12px; font-size:17px; }
+    .midi-command { padding:12px 0; border-top:1px solid var(--border); }
+    .midi-command:first-of-type { border-top:0; }
+    .midi-fields { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
+    .midi-fields input { min-height:44px; padding:8px; }
+    .midi-actions { display:flex; gap:8px; margin-top:10px; }
+    .midi-actions button { padding:8px 12px; min-height:40px; }
+    .midi-bank-note { color:var(--muted); font-size:14px; margin:10px 0; }
+    .midi-draft-status { color:var(--warning); font-size:13px; min-height:18px; margin:2px 0 6px; }
+    .midi-save { display:flex; align-items:center; gap:16px; flex-wrap:wrap; margin-top:18px; }
+    .midi-save p { flex:1; min-width:240px; color:var(--muted); font-size:14px; }
+    .network-form label { display:grid; gap:6px; }
+    .network-form fieldset { display:flex; gap:20px; flex-wrap:wrap; border:0; padding:0; margin:0; }
+    .network-form fieldset label { display:flex; align-items:center; gap:8px; }
+    .network-form input[type="radio"], .network-form input[type="checkbox"] { width:auto; min-height:0; }
+    .network-fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+    #network-static { grid-column:1/-1; }
+    .network-form button { justify-self:start; padding:10px 20px; }
+    .scan-progress { margin-top:20px; padding:24px; border:1px solid var(--border); border-radius:var(--radius); }
+    .progress-heading { display:flex; justify-content:space-between; gap:16px; margin-bottom:16px; }
+    .progress-heading span { color:var(--muted); }
+    progress { display:block; width:100%; height:8px; appearance:none; border:0; border-radius:4px; background:var(--surface); color:var(--accent); overflow:hidden; }
+    progress::-webkit-progress-bar { background:var(--surface); }
+    progress::-webkit-progress-value { background:var(--accent); }
+    progress::-moz-progress-bar { background:var(--accent); }
+    .scan-progress p { color:var(--muted); font-size:14px; margin:16px 0; }
+    .scan-progress button { color:var(--warning); padding:12px 20px; }
+    .statusbar { display:flex; align-items:baseline; gap:12px; min-height:52px; margin-top:24px; padding:14px 0 20px; border-top:1px solid var(--border); font-size:14px; color:var(--muted); }
+    .statusbar[data-error="true"] { color:var(--danger); }
+    .statusbar button { min-height:44px; font-size:14px; padding:8px 14px; margin-left:auto; }
+    .visually-hidden { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+    @media (min-width:1100px) { .workspace { min-height:718px; } }
+    @media (max-width:1100px) {
+      .topbar { gap:24px; }
+      .device-mode { margin-left:0; }
+      .preset-number { font-size:64px; }
+      h1 { font-size:30px; }
+      .preset-navigation button { padding:14px; }
+      .preset-navigation span { display:none; }
+      .scene-name { font-size:16px; }
+      .effect-button { padding:16px; }
+      .effect-code { font-size:26px; }
+      .effect-button::after { right:14px; }
+    }
+    @media (max-width:800px) {
+      .shell { padding:0 16px; }
+      .topbar { min-height:0; flex-wrap:wrap; gap:0; padding-top:12px; }
+      .brand { font-size:28px; letter-spacing:-1px; }
+      .connection { font-size:12px; gap:7px; }
+      .device-mode { font-size:12px; margin-left:12px; }
+      .view-nav { order:4; width:100%; justify-content:space-between; gap:4px; margin-top:8px; }
+      .view-nav a { flex:1; justify-content:center; padding:12px 2px; font-size:14px; white-space:nowrap; }
+      .current-preset { margin-top:12px; min-height:0; gap:14px; padding:14px; flex-wrap:wrap; }
+      .preset-number { font-size:46px; letter-spacing:-3px; padding-right:16px; }
+      .preset-details { flex-basis:calc(100% - 110px); }
+      h1 { font-size:23px; letter-spacing:-.3px; }
+      .current-scene { font-size:13px; margin-top:4px; }
+      .preset-navigation { width:100%; gap:8px; }
+      .preset-navigation button { flex:1; min-height:44px; padding:8px; gap:8px; font-size:13px; }
+      .preset-navigation span { display:inline; }
+      .preset-navigation .icon { width:16px; height:16px; }
+      .workspace { display:block; padding-top:20px; }
+      .workspace[data-view="spielen"] .preset-browser { display:none; }
+      .preset-browser { padding-left:0; border:0; }
+      h2 { font-size:19px; }
+      .section-heading { margin-bottom:10px; }
+      .section-heading .meta { font-size:12px; }
+      .scene-grid { gap:7px; }
+      .scene-button { min-height:74px; padding:8px 4px; gap:2px; }
+      .scene-number { font-size:12px; }
+      .scene-name { font-size:13px; line-height:1.2; }
+      .scene-button .control-state { font-size:11px; min-height:15px; }
+      .effects-section { margin-top:22px; }
+      .effect-grid { gap:8px; }
+      .effect-button { min-height:100px; padding:12px 10px; }
+      .effect-code { font-size:22px; }
+      .effect-name { font-size:12px; }
+      .effect-button .control-state { font-size:11px; }
+      .effect-button::after { width:7px; height:7px; top:17px; right:10px; }
+      .performance { padding-bottom:0; }
+      .statusbar { margin-top:20px; font-size:12px; }
+      .preset-row { min-height:52px; }
+      .preset-select { gap:8px; padding:10px 8px 10px 12px; }
+      .favorites-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+      .row-name { font-size:15px; }
+      .row-number { font-size:16px; }
+      .direct-choice { margin-top:16px; padding-top:16px; }
+      .management-intro { font-size:14px; }
+      .management-row { display:block; padding:20px 0; }
+      .management-row p { font-size:14px; }
+      .management-row button { margin-top:16px; width:100%; }
+      .network-fields { grid-template-columns:1fr; }
+      .custom-midi-top,.midi-banks { grid-template-columns:1fr; }
+      .custom-midi-name-fields { flex-wrap:wrap; }
+      .custom-midi-name-fields button { width:100%; }
+      .network-form button { width:100%; }
+      .scan-progress { padding:18px; }
+    }
+    @media (max-width:380px) { .device-mode { display:none; } .effect-code { font-size:20px; } .effect-name { font-size:11px; } }
+    @media (prefers-reduced-motion:reduce) { * { transition:none !important; scroll-behavior:auto !important; } }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <div class="brand">Lepus</div>
+      <nav class="view-nav" aria-label="Ansichten">
+        <a href="#spielen" data-view="spielen" aria-current="page">Spielen</a>
+        <a href="#presets" data-view="presets">Presets</a>
+        <a href="#custom-midi" data-view="custom-midi">Custom MIDI</a>
+        <a href="#verwaltung" data-view="verwaltung">Verwaltung</a>
+      </nav>
+      <div class="connection" id="connection" data-state="waiting" role="status">Verbinde …</div>
+      <div class="device-mode" id="device-mode">Modus: —</div>
+    </header>
+    <section class="current-preset" aria-label="Aktuelles Preset">
+      <span class="preset-number" id="preset-number">—</span>
+      <div class="preset-details">
+        <h1 id="preset">Warte auf MIDI</h1>
+        <p class="current-scene" id="scene">Noch keine aktive Szene</p>
+      </div>
+      <div class="preset-navigation" aria-label="Preset wechseln">
+        <button type="button" id="preset-down" aria-label="Preset zurück" disabled>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m14 5-7 7 7 7"/></svg><span>Preset zurück</span>
+        </button>
+        <button type="button" id="preset-up" aria-label="Preset weiter" disabled>
+          <span>Preset weiter</span><svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m10 5 7 7-7 7"/></svg>
+        </button>
+      </div>
+    </section>
+    <main class="workspace" id="workspace" data-view="spielen">
+      <div class="performance" id="performance">
+        <section aria-labelledby="scenes-heading">
+          <div class="section-heading"><h2 id="scenes-heading">Szenen</h2><span class="meta" id="scene-count">— / 8</span></div>
+          <div class="scene-grid" id="scenegrid"><p class="empty-state">Szenen werden geladen …</p></div>
+        </section>
+        <section class="effects-section" aria-labelledby="effects-heading">
+          <div class="section-heading"><h2 id="effects-heading">Effekte</h2><span class="meta">6 Schalter</span></div>
+          <div class="effect-grid" id="grid"><p class="empty-state">Effekte werden geladen …</p></div>
+        </section>
+      </div>
+      <section class="preset-browser" id="preset-browser" aria-labelledby="presets-heading">
+        <div class="section-heading"><h2 id="presets-heading">Presets</h2><span class="meta" id="preset-count"></span></div>
+        <section class="favorites-panel" aria-labelledby="favorites-heading">
+          <div class="favorites-heading"><h3 id="favorites-heading">Favoriten</h3><span class="meta" id="favorite-count">0 / 6</span></div>
+          <div class="favorites-grid" id="favorites-grid"></div>
+        </section>
+        <label class="search-label">
+          <span class="visually-hidden">Presets nach Nummer oder Name suchen</span>
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg>
+          <input id="preset-search" type="search" placeholder="Nummer oder Name suchen" autocomplete="off" spellcheck="false">
+        </label>
+        <div class="preset-list" id="preset-list" aria-label="Presetliste" aria-busy="true"><p class="empty-state">Preset-Namen werden geladen …</p></div>
+        <form class="direct-choice" id="direct-choice">
+          <label for="preset-input">Direktwahl</label>
+          <input id="preset-input" type="text" inputmode="numeric" pattern="[0-9]+" maxlength="3" placeholder="0–500" aria-describedby="preset-error" autocomplete="off" required>
+          <button class="primary" id="go-btn" type="submit" disabled>Laden</button>
+        </form>
+        <p class="inline-error" id="preset-error" role="alert" hidden></p>
+        <div class="management-row preset-save-row">
+          <div><h3>Preset-Namen</h3><p id="save-state">Speicherstatus wird geladen …</p></div>
+          <button type="button" class="primary" id="save-flash-btn" disabled>Namen speichern</button>
+        </div>
+      </section>
+      <section class="management" id="management" aria-labelledby="management-heading" hidden>
+        <h2 id="management-heading">Verwaltung</h2>
+        <p class="management-intro">Netzwerk und Presetmodus verwalten.</p>
+        <form class="network-form" id="network-form">
+          <h3>WLAN</h3>
+          <p id="network-state">Netzwerkstatus wird geladen …</p>
+          <fieldset aria-label="WLAN-Modus">
+            <label><input type="radio" name="network-mode" value="ap" checked> Access Point</label>
+            <label><input type="radio" name="network-mode" value="home"> Heimnetzwerk</label>
+          </fieldset>
+          <div id="network-home" class="network-fields" hidden>
+            <label>Netzwerkname (SSID)<input id="network-ssid" maxlength="32" autocomplete="off"></label>
+            <label>WLAN-Passwort<input id="network-password" type="password" maxlength="64" autocomplete="new-password" placeholder="Bei Änderung neu eingeben"></label>
+            <label><span>IP-Adresse automatisch beziehen</span><span><input id="network-dhcp" type="checkbox" checked> DHCP</span></label>
+            <div id="network-static" class="network-fields" hidden>
+              <label>IP-Adresse<input id="network-ip" inputmode="decimal" placeholder="192.168.1.50"></label>
+              <label>Gateway<input id="network-gateway" inputmode="decimal" placeholder="192.168.1.1"></label>
+              <label>Subnetzmaske<input id="network-subnet" inputmode="decimal" placeholder="255.255.255.0"></label>
+              <label>DNS-Server<input id="network-dns" inputmode="decimal" placeholder="192.168.1.1"></label>
+            </div>
+          </div>
+          <p>Nach dem Speichern startet der Controller neu. Access Point: 192.168.4.1, Passwort: lepus-fm3. Fußtaster 5 und 6 gleichzeitig zehn Sekunden halten, um wieder in den Access-Point-Modus zu wechseln.</p>
+          <button class="primary" id="network-save" type="submit" disabled>WLAN speichern</button>
+          <p class="inline-error" id="network-error" role="alert" hidden></p>
+        </form>
+        <div class="management-row">
+          <div><h3>Favoriten im Presetmodus</h3><p id="favorite-mode-state">Einstellung wird geladen …</p></div>
+          <button type="button" id="favorite-mode-btn" aria-pressed="false" disabled>Aktivieren</button>
+        </div>
+        <div class="management-row">
+          <div><h3>Unbekannte Presets</h3><p>Nur fehlende Namen erneut abfragen. Bereits bekannte Presets werden übersprungen.</p></div>
+          <button type="button" id="scan-smart-btn" disabled>Unbekannte Presets scannen</button>
+        </div>
+        <div class="management-row">
+          <div><h3>Vollständiger Scan</h3><p>Alle Namen neu einlesen. Der Scan wechselt die Presets und dauert etwa 4–13 Minuten. Danach wird das vorherige Preset geladen.</p></div>
+          <button type="button" id="scan-deep-btn" disabled>Vollständigen Scan starten</button>
+        </div>
+        <div class="scan-progress" id="scan-progress" hidden>
+          <div class="progress-heading"><h3>Scan läuft</h3><span id="scan-count">0 / 501</span></div>
+          <progress id="scan-meter" max="501" value="0" aria-label="Scanfortschritt"></progress>
+          <p>Die Spielsteuerung ist während des Scans gesperrt. Du kannst den Scan jederzeit stoppen.</p>
+          <button type="button" id="scan-stop-btn">Scan stoppen</button>
+        </div>
+      </section>
+      <section class="custom-midi-settings" id="custom-midi-settings" aria-labelledby="custom-midi-heading" hidden>
+        <div class="section-heading"><h2 id="custom-midi-heading">Custom MIDI</h2></div>
+        <p>Fußtaster 3 oder 4 eine Sekunde halten, um das zugehörige Set zu aktivieren. Erneutes Halten desselben Tasters kehrt zum vorherigen Modus zurück. Bei zwei Banken wechseln A und B mit jeder kurzen Betätigung. Namen und CC-Befehle werden mit „Zum Testen übernehmen“ sofort am Pedal aktiv. Erst „Alle Änderungen dauerhaft speichern“ schreibt beide Sets in den Flash.</p>
+        <div class="custom-midi-sets" role="tablist" aria-label="Custom-MIDI-Sets">
+          <button type="button" id="custom-midi-set-3" role="tab" aria-selected="true" aria-controls="custom-midi-editor">Taster 3 HOLD</button>
+          <button type="button" id="custom-midi-set-4" role="tab" aria-selected="false" aria-controls="custom-midi-editor">Taster 4 HOLD</button>
+        </div>
+        <div id="custom-midi-editor" role="tabpanel" aria-labelledby="custom-midi-set-3">
+        <div class="custom-midi-top">
+          <label>Fußtaster<select id="custom-midi-slot"></select></label>
+          <label>Stampede-Modus<select id="custom-midi-mode"><option value="single">Single step · eine Bank</option><option value="alternate">Single step · zwei Banken</option></select></label>
+        </div>
+        <form class="custom-midi-name" id="custom-midi-name-form">
+          <label for="custom-midi-name">Name auf dem OLED</label>
+          <div class="custom-midi-name-fields">
+            <input id="custom-midi-name" maxlength="20" placeholder="MIDI 1" aria-describedby="custom-midi-name-note" autocomplete="off">
+            <button type="submit" id="custom-midi-name-submit" disabled>Zum Testen übernehmen</button>
+          </div>
+          <p class="custom-midi-name-note" id="custom-midi-name-note">Bis zu 20 Zeichen (ohne Umlaute). Leer lassen für „MIDI 1“.</p>
+        </form>
+        <p id="custom-midi-next" class="midi-bank-note"></p>
+        <div id="custom-midi-banks" class="midi-banks"></div>
+        <div class="midi-save">
+          <p id="custom-midi-save-state" role="status">Einstellungen werden geladen …</p>
+          <button class="primary" type="button" id="custom-midi-save" disabled>Alle Änderungen dauerhaft speichern</button>
+        </div>
+        </div>
+      </section>
+    </main>
+    <footer class="statusbar" id="statusbar">
+      <p id="status" role="status" aria-live="polite">Verbindung zum Controller wird hergestellt …</p>
+      <button type="button" id="retry-btn" hidden>Erneut versuchen</button>
+    </footer>
+  </div>
+  <script>
+// Local demonstration data. This script is only injected into docs/preview/index.html.
+(() => {
+  const names = {
+    11:'Hipower', 12:'USA Mk IV', 13:'USA IIC+', 14:'Recto 1', 15:'Recto 2',
+    16:'Euro', 17:'AC-20 Deluxe', 18:'Shiver', 19:'Brit 800', 20:'Clean Chorus'
+  };
+  const sceneNames = ['Orange Vintage','Red Vintage','Orange Modern','Red Modern',
+    'Driven Orange','Driven Red','Dry Orange','Red Lead'];
+  const labels = ['CMP','DRV','MOD','DLY','REV','BST'];
+  const customMidi = Array.from({length:2}, (_, set) => Array.from({length:6}, (_, slot) => ({
+    mode:slot === 0 ? 'alternate' : 'single', name:slot === 0 ? (set ? 'Tap Tempo' : 'Boost') : '',
+    nextBank:0,
+    banks:[[{cmd:'CC',channel:1,number:set ? 14 : 20 + slot,value:127}],
+      [{cmd:'CC',channel:1,number:set ? 14 : 20 + slot,value:0}]]
+  })));
+  const state = {
+    scanning:false, scanProgress:0, presetCount:501, cacheRevision:1,
+    unsaved:false, storageReady:true, ready:true, presetNumber:15,
+    presetName:'Recto 2', sceneNumber:1, sceneName:sceneNames[0], message:'Bereit',
+    favoriteModeEnabled:true, favoriteModeActive:true, favoritesRevision:1,
+    favorites:[11,12,13,14,15,16], mode:'effects', customMidiRevision:1,
+    customMidiDirty:false, activeCustomMidiSet:0, customMidi,
+    scenes:sceneNames.map((name, index) => ({number:index+1,name,active:index===0})),
+    slots:labels.map((label,index) => ({index,label,available:index!==5,active:index===4}))
+  };
+  const presets = Array.from({length:501}, (_, index) => ({
+    name:names[index] || '', state:names[index] ? 1 : 0
+  }));
+  const network = {
+    mode:'ap',activeMode:'ap',ssid:'',apSsid:'Lepus-DEMO01',address:'192.168.4.1',
+    dhcp:true,hasPassword:true,ip:'',gateway:'',subnet:'',dns:''
+  };
+  window.fetch = async (input, options = {}) => {
+    const url = new URL(input, location.href);
+    const path = url.pathname;
+    const params = url.searchParams;
+    let result;
+    if (path.endsWith('/api/status')) result = state;
+    else if (path.endsWith('/api/presets')) result = {revision:state.cacheRevision,presets};
+    else if (path.endsWith('/api/network')) result = network;
+    else if (options.method === 'POST') {
+      if (path.endsWith('/api/preset')) state.presetNumber = Number(params.get('number'));
+      if (path.endsWith('/api/scene')) state.sceneNumber = Number(params.get('number'));
+      if (path.endsWith('/api/effect')) {
+        const slot = state.slots[Number(params.get('slot'))];
+        if (slot?.available) slot.active = !slot.active;
+      }
+      if (path.endsWith('/api/command')) state.presetNumber = Math.max(0,Math.min(500,
+        state.presetNumber + (params.get('cmd') === 'preset_up' ? 1 : -1)));
+      if (path.endsWith('/api/favorite/mode')) state.favoriteModeEnabled = params.get('enabled') === '1';
+      if (path.endsWith('/api/custom-midi/mode')) {
+        const item = customMidi[Number(params.get('set'))][Number(params.get('slot'))];
+        item.mode = params.get('mode') === '1' ? 'alternate' : 'single';
+        state.customMidiRevision++;
+      }
+      if (path.endsWith('/api/custom-midi/name')) {
+        customMidi[Number(params.get('set'))][Number(params.get('slot'))].name = params.get('name');
+        state.customMidiRevision++;
+      }
+      if (path.endsWith('/api/custom-midi/save')) state.customMidiDirty = false;
+      state.presetName = presets[state.presetNumber].name || 'Preset ' + state.presetNumber;
+      state.sceneName = sceneNames[state.sceneNumber - 1] || '';
+      state.scenes.forEach(scene => { scene.active = scene.number === state.sceneNumber; });
+      result = {accepted:true};
+    } else result = {error:'Unbekannter Demo-Endpunkt'};
+    return {ok:!result.error,status:result.error?404:200,json:async()=>structuredClone(result)};
+  };
+})();
+
+  </script>
+  <script>
+const el = id => document.getElementById(id);
+const effectNames = {CMP:'Kompressor', DRV:'Drive', MOD:'Modulation', DLY:'Delay', REV:'Reverb', BST:'Boost'};
+const viewNames = ['spielen', 'presets', 'custom-midi', 'verwaltung'];
+let busy = false;
+let polling = false;
+let online = false;
+let lastState;
+let presets = [];
+let cacheRevision = -1;
+let presetCount = 501;
+let activePreset = -1;
+let renderedFavoritesRevision = -1;
+let actionVersion = 0;
+let inputEdited = false;
+let uiError = '';
+let errorSource = '';
+let notice = '';
+let noticeUntil = 0;
+let currentView = 'spielen';
+let networkLoaded = false;
+let renderedCustomMidiRevision = -1;
+let renderedCustomMidiSlot = -1;
+let renderedCustomMidiSet = -1;
+let selectedCustomMidiSet = 0;
+const customMidiDrafts = new Map();
+const customMidiNameDrafts = new Map();
+
+function text(node, value) {
+  const next = String(value);
+  if (node.textContent !== next) node.textContent = next;
+}
+async function api(path, method = 'GET', body) {
+  const abort = new AbortController();
+  const timer = setTimeout(() => abort.abort(), 4500);
+  try {
+    const response = await fetch(path, {method, body, cache:'no-store', signal:abort.signal});
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+    return data;
+  } catch (error) {
+    if (error.name === 'AbortError') throw new Error('Der Controller antwortet nicht.');
+    throw error;
+  } finally { clearTimeout(timer); }
+}
+
+function setView() {
+  const hash = location.hash.slice(1);
+  currentView = viewNames.includes(hash) ? hash : 'spielen';
+  for (const link of document.querySelectorAll('.view-nav a')) {
+    if (link.dataset.view === currentView) link.setAttribute('aria-current', 'page');
+    else link.removeAttribute('aria-current');
+  }
+  el('workspace').dataset.view = currentView;
+  el('performance').hidden = currentView !== 'spielen';
+  el('preset-browser').hidden = currentView === 'verwaltung' || currentView === 'custom-midi';
+  el('management').hidden = currentView !== 'verwaltung';
+  el('custom-midi-settings').hidden = currentView !== 'custom-midi';
+  if (currentView === 'presets') centerActivePreset();
+}
+
+function commandBlocked() { return busy || !online || !lastState || lastState.scanning; }
+function setControls() {
+  const blocked = commandBlocked();
+  for (const id of ['preset-down', 'preset-up']) el(id).disabled = blocked || lastState.presetNumber < 0;
+  el('go-btn').disabled = blocked;
+  const favoritesFull = Array.isArray(lastState?.favorites) && lastState.favorites.every(number => number >= 0);
+  for (const button of document.querySelectorAll('.preset-select')) button.disabled = blocked;
+  for (const button of document.querySelectorAll('.favorite-toggle')) {
+    button.disabled = blocked || (favoritesFull && button.getAttribute('aria-pressed') !== 'true');
+  }
+  for (const button of document.querySelectorAll('.favorite-slot-actions button')) button.disabled = blocked || button.dataset.available === 'false';
+  el('favorite-mode-btn').disabled = blocked;
+  for (const button of document.querySelectorAll('#scenegrid button, #grid button')) {
+    button.disabled = blocked || !lastState.ready || button.dataset.available === 'false';
+  }
+  el('scan-smart-btn').disabled = el('scan-deep-btn').disabled = blocked || !lastState?.ready;
+  el('scan-stop-btn').disabled = busy || !online || !lastState?.scanning;
+  el('save-flash-btn').disabled = busy || !online || !lastState?.storageReady || !lastState?.unsaved;
+  el('network-save').disabled = busy || !online || !networkLoaded;
+  el('custom-midi-mode').disabled = blocked;
+  const nameDraft = customMidiNameDrafts.get(`${selectedCustomMidiSet}:${el('custom-midi-slot').value}`);
+  el('custom-midi-name-submit').disabled = blocked || !nameDraft || nameDraft.pending;
+  el('custom-midi-name').disabled = !!nameDraft?.pending;
+  el('custom-midi-save').disabled = blocked || !lastState?.customMidiDirty || customMidiDrafts.size > 0 || customMidiNameDrafts.size > 0;
+  for (const button of document.querySelectorAll('#custom-midi-banks button')) {
+    button.disabled = blocked || button.dataset.pending === 'true';
+  }
+}
+
+function updateNetworkFields() {
+  const home = document.querySelector('input[name="network-mode"]:checked').value === 'home';
+  el('network-home').hidden = !home;
+  el('network-static').hidden = !home || el('network-dhcp').checked;
+}
+
+async function loadNetworkSettings() {
+  if (networkLoaded) return;
+  try {
+    const settings = await api('/api/network');
+    document.querySelector(`input[name="network-mode"][value="${settings.mode}"]`).checked = true;
+    el('network-ssid').value = settings.ssid;
+    el('network-dhcp').checked = settings.dhcp;
+    for (const key of ['ip', 'gateway', 'subnet', 'dns']) el(`network-${key}`).value = settings[key];
+    text(el('network-state'), settings.activeMode === 'ap'
+      ? `Access Point ${settings.apSsid} · ${settings.address}${settings.mode === 'home' ? ' (Heimnetz nicht erreichbar)' : ''}`
+      : `Heimnetz ${settings.ssid} · ${settings.address}`);
+    el('network-password').placeholder = settings.hasPassword ? 'Gespeichertes Passwort beibehalten' : 'Offenes Netz oder Passwort eingeben';
+    networkLoaded = true;
+    updateNetworkFields();
+    setControls();
+  } catch (error) {
+    text(el('network-state'), `Netzwerkstatus nicht verfügbar: ${error.message}`);
+  }
+}
+
+async function saveNetwork(event) {
+  event.preventDefault();
+  if (busy || !online || !networkLoaded) return;
+  const mode = document.querySelector('input[name="network-mode"]:checked').value;
+  const params = new URLSearchParams({
+    mode, ssid:el('network-ssid').value.trim(), password:el('network-password').value,
+    dhcp:el('network-dhcp').checked ? '1' : '0', ip:el('network-ip').value.trim(),
+    gateway:el('network-gateway').value.trim(), subnet:el('network-subnet').value.trim(),
+    dns:el('network-dns').value.trim()
+  });
+  el('network-error').hidden = true;
+  busy = true;
+  setControls();
+  try {
+    await api('/api/network', 'POST', params);
+    text(el('network-state'), 'Gespeichert. Der Controller startet neu. Verbinde dein Handy danach mit dem gewählten Netzwerk.');
+  } catch (error) {
+    text(el('network-error'), error.message);
+    el('network-error').hidden = false;
+  } finally {
+    busy = false;
+    setControls();
+  }
+}
+
+function renderStatus() {
+  const scanning = !!lastState?.scanning;
+  const connected = online && lastState?.ready;
+  el('connection').dataset.state = !online ? 'offline' : connected || scanning ? 'online' : 'waiting';
+  text(el('connection'), !online ? 'Verbindung unterbrochen' : scanning ? 'Scan läuft' : connected ? 'Verbunden' : 'Warte auf MIDI');
+  el('statusbar').dataset.error = String(!!uiError);
+  el('retry-btn').hidden = !uiError;
+  const fallback = !online ? 'Der Controller ist nicht erreichbar.' : scanning
+    ? `Scan läuft: ${lastState.scanProgress} / ${presetCount}. Die Spielsteuerung ist gesperrt.`
+    : lastState?.message || (connected ? 'Bereit' : 'Warte auf eine vollständige MIDI-Antwort.');
+  text(el('status'), uiError || (Date.now() < noticeUntil ? notice : fallback));
+}
+
+async function sendAction(path) {
+  if (busy || !online) return false;
+  busy = true;
+  ++actionVersion;
+  uiError = '';
+  errorSource = '';
+  notice = 'Befehl wird gesendet …';
+  noticeUntil = Date.now() + 5000;
+  setControls();
+  renderStatus();
+  try {
+    await api(path, 'POST');
+    notice = 'Befehl angenommen. Warte auf Bestätigung …';
+    noticeUntil = Date.now() + 900;
+    return true;
+  } catch (error) {
+    uiError = error.message;
+    errorSource = 'action';
+    noticeUntil = 0;
+    return false;
+  } finally {
+    busy = false;
+    setControls();
+    renderStatus();
+  }
+}
+
+async function selectPreset(number) {
+  if (commandBlocked() || !Number.isInteger(number) || number < 0 || number >= presetCount) return;
+  await sendAction(`/api/preset?number=${number}`);
+}
+async function submitPreset(event) {
+  event.preventDefault();
+  const value = el('preset-input').value.trim();
+  const number = Number(value);
+  const valid = /^\d+$/.test(value) && Number.isInteger(number) && number >= 0 && number < presetCount;
+  el('preset-input').setAttribute('aria-invalid', String(!valid));
+  el('preset-error').hidden = valid;
+  if (!valid) {
+    text(el('preset-error'), `Bitte eine Presetnummer zwischen 0 und ${presetCount - 1} eingeben.`);
+    el('preset-input').focus();
+    return;
+  }
+  if (!commandBlocked()) {
+    inputEdited = false;
+    await selectPreset(number);
+  }
+}
+
+function presetLabel(preset) {
+  if (preset.state === 0) return 'Name unbekannt';
+  if (preset.state === 2) return 'Keine Antwort';
+  return preset.name.trim() || 'Leeres Preset';
+}
+function isFavorite(number) { return Array.isArray(lastState?.favorites) && lastState.favorites.includes(number); }
+async function toggleFavorite(number) {
+  if (commandBlocked()) return;
+  await sendAction(`/api/favorite/toggle?number=${number}`);
+}
+async function moveFavorite(slot, direction) {
+  if (commandBlocked()) return;
+  await sendAction(`/api/favorite/move?slot=${slot}&direction=${direction}`);
+}
+function updateFavoriteButtons() {
+  for (const button of document.querySelectorAll('.favorite-toggle')) {
+    const number = Number(button.dataset.number);
+    const favorite = isFavorite(number);
+    button.setAttribute('aria-pressed', String(favorite));
+    button.setAttribute('aria-label', favorite ? `Preset ${number} aus Favoriten entfernen` : `Preset ${number} zu Favoriten hinzufügen`);
+    button.textContent = favorite ? '★' : '☆';
+  }
+}
+function renderFavorites() {
+  const parent = el('favorites-grid');
+  const favorites = Array.isArray(lastState?.favorites) ? lastState.favorites : [];
+  const fragment = document.createDocumentFragment();
+  favorites.forEach((number, slot) => {
+    const card = document.createElement('div');
+    card.className = 'favorite-slot';
+    const main = document.createElement('div');
+    main.className = 'favorite-slot-main';
+    const position = document.createElement('span');
+    position.className = 'favorite-slot-number';
+    position.textContent = `${slot + 1}.`;
+    const name = document.createElement('span');
+    name.className = 'favorite-slot-name';
+    const valid = Number.isInteger(number) && number >= 0 && number < presetCount;
+    name.textContent = valid ? `${String(number).padStart(3, '0')} · ${presets[number] ? presetLabel(presets[number]) : 'Name unbekannt'}` : 'Nicht belegt';
+    main.append(position, name);
+    const actions = document.createElement('div');
+    actions.className = 'favorite-slot-actions';
+    for (const [label, direction] of [['←', -1], ['→', 1]]) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = label;
+      button.dataset.available = String(valid && slot + direction >= 0 && slot + direction < favorites.length);
+      button.setAttribute('aria-label', `Favorit auf Platz ${slot + 1} ${direction < 0 ? 'nach links' : 'nach rechts'} verschieben`);
+      button.onclick = () => moveFavorite(slot, direction);
+      actions.appendChild(button);
+    }
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.textContent = '×';
+    remove.dataset.available = String(valid);
+    remove.setAttribute('aria-label', `Favorit auf Platz ${slot + 1} entfernen`);
+    remove.onclick = () => toggleFavorite(number);
+    actions.appendChild(remove);
+    card.append(main, actions);
+    fragment.appendChild(card);
+  });
+  parent.replaceChildren(fragment);
+  text(el('favorite-count'), `${favorites.filter(number => number >= 0).length} / ${favorites.length || 6}`);
+  updateFavoriteButtons();
+  setControls();
+}
+function searchKey(value) { return String(value).toLocaleLowerCase('de').normalize('NFD').replace(/[\u0300-\u036f]/g, ''); }
+function renderPresetList(resetScroll = false) {
+  const list = el('preset-list');
+  const previousScroll = list.scrollTop;
+  const focusedNumber = list.contains(document.activeElement) ? document.activeElement.dataset.number : undefined;
+  const query = searchKey(el('preset-search').value.trim());
+  const fragment = document.createDocumentFragment();
+  let matches = 0;
+  presets.forEach((preset, number) => {
+    const padded = String(number).padStart(3, '0');
+    const label = presetLabel(preset);
+    if (query && !searchKey(`${padded} ${label}`).includes(query)) return;
+    ++matches;
+    const row = document.createElement('div');
+    row.className = 'preset-row';
+    row.dataset.number = String(number);
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'preset-select';
+    button.dataset.number = String(number);
+    button.setAttribute('aria-label', `Preset ${number}: ${label}`);
+    for (const [className, value] of [['row-number', padded], ['row-name', label], ['row-state', '']]) {
+      const span = document.createElement('span');
+      span.className = className;
+      span.textContent = value;
+      button.appendChild(span);
+    }
+    button.onclick = () => selectPreset(number);
+    const favorite = document.createElement('button');
+    favorite.type = 'button';
+    favorite.className = 'favorite-toggle';
+    favorite.dataset.number = String(number);
+    favorite.onclick = () => toggleFavorite(number);
+    row.append(button, favorite);
+    fragment.appendChild(row);
+  });
+  if (!matches) {
+    const empty = document.createElement('p');
+    empty.className = 'empty-state';
+    empty.textContent = query ? 'Keine passenden Presets. Versuche einen anderen Namen oder eine Nummer.' : 'Noch keine Preset-Namen verfügbar.';
+    fragment.appendChild(empty);
+  }
+  list.replaceChildren(fragment);
+  list.setAttribute('aria-busy', 'false');
+  text(el('preset-count'), query ? `${matches} Treffer` : `${presets.length} Presets`);
+  updateActivePreset();
+  updateFavoriteButtons();
+  list.scrollTop = resetScroll ? 0 : previousScroll;
+  if (focusedNumber !== undefined) list.querySelector(`[data-number="${focusedNumber}"]`)?.focus({preventScroll:true});
+  setControls();
+}
+function updateActivePreset() {
+  for (const row of document.querySelectorAll('.preset-row')) {
+    const active = Number(row.dataset.number) === lastState?.presetNumber;
+    row.setAttribute('aria-current', String(active));
+    text(row.querySelector('.row-state'), active ? 'Aktiv' : '');
+  }
+}
+function centerActivePreset() {
+  if (el('preset-search').value.trim()) return;
+  const list = el('preset-list');
+  const row = list.querySelector('[aria-current="true"]');
+  if (row && list.clientHeight) list.scrollTop += row.getBoundingClientRect().top - list.getBoundingClientRect().top - (list.clientHeight - row.offsetHeight) / 2;
+}
+async function refreshCache(revision) {
+  if (cacheRevision === revision) return;
+  const data = await api('/api/presets');
+  if (!Array.isArray(data.presets)) throw new Error('Ungültige Presetliste empfangen.');
+  const first = cacheRevision === -1;
+  presets = data.presets;
+  cacheRevision = data.revision;
+  renderPresetList();
+  renderFavorites();
+  if (first) centerActivePreset();
+}
+
+function updateButtons(containerId, items, isScene) {
+  const parent = el(containerId);
+  if (!parent.firstElementChild?.matches('button')) parent.replaceChildren();
+  items.forEach((item, index) => {
+    let button = parent.children[index];
+    if (!button) {
+      button = document.createElement('button');
+      button.type = 'button';
+      const classes = isScene ? ['scene-number', 'scene-name', 'control-state'] : ['effect-code', 'effect-name', 'control-state'];
+      for (const className of classes) {
+        const span = document.createElement('span');
+        span.className = className;
+        button.appendChild(span);
+      }
+      parent.appendChild(button);
+    }
+    const available = isScene || item.available;
+    button.dataset.available = String(available);
+    button.className = `${isScene ? 'scene-button' : 'effect-button'} ${!available ? 'unavailable' : item.active ? 'on' : 'off'}`;
+    button.setAttribute('aria-pressed', String(item.active && available));
+    if (isScene) {
+      const name = item.name.trim() || `Szene ${item.number}`;
+      text(button.children[0], item.number);
+      text(button.children[1], name);
+      text(button.children[2], item.active ? 'Aktiv' : 'Inaktiv');
+      button.setAttribute('aria-label', `Szene ${item.number}: ${name}`);
+      button.onclick = () => { if (!commandBlocked() && lastState.ready) sendAction(`/api/scene?number=${item.number}`); };
+    } else {
+      const name = effectNames[item.label] || item.label;
+      text(button.children[0], item.label);
+      text(button.children[1], name);
+      text(button.children[2], !available ? 'Nicht vorhanden' : item.active ? 'Aktiv' : 'Aus');
+      button.setAttribute('aria-label', `${name}: ${!available ? 'Nicht vorhanden' : item.active ? 'Aktiv' : 'Aus'}`);
+      button.onclick = () => { if (!commandBlocked() && lastState.ready && available) sendAction(`/api/effect?slot=${item.index}`); };
+    }
+  });
+  while (parent.children.length > items.length) parent.lastElementChild.remove();
+}
+
+function midiDraftKey(set, slot, bank, index) { return `${set}:${slot}:${bank}:${index}`; }
+
+function midiFormValues(form) {
+  return {
+    channel: form.elements.namedItem('channel').value,
+    number: form.elements.namedItem('number').value,
+    value: form.elements.namedItem('value').value
+  };
+}
+
+function midiValuesMatch(left, right) {
+  return !!right && left.channel !== '' && left.number !== '' && left.value !== '' &&
+    Number(left.channel) === right.channel &&
+    Number(left.number) === right.number && Number(left.value) === right.value;
+}
+
+function reconcileMidiDrafts(state) {
+  let changed = false;
+  for (const [key, draft] of customMidiDrafts) {
+    if (!draft.pending) continue;
+    const command = state.customMidi?.[draft.set]?.[draft.slot]?.banks?.[draft.bank]?.[draft.index];
+    if (midiValuesMatch(draft.values, command)) customMidiDrafts.delete(key);
+    else if (Date.now() - draft.submittedAt > 5000) draft.pending = false;
+    else continue;
+    changed = true;
+  }
+  if (changed) renderedCustomMidiRevision = -1;
+}
+
+function reconcileMidiNameDrafts(state) {
+  let changed = false;
+  for (const [key, draft] of customMidiNameDrafts) {
+    if (!draft.pending) continue;
+    if (state.customMidi?.[draft.set]?.[draft.slot]?.name === draft.value) customMidiNameDrafts.delete(key);
+    else if (Date.now() - draft.submittedAt > 5000) draft.pending = false;
+    else continue;
+    changed = true;
+  }
+  if (changed) renderedCustomMidiRevision = -1;
+}
+
+function midiEditor(set, slot, bank, index, command) {
+  const key = midiDraftKey(set, slot, bank, index);
+  const draft = customMidiDrafts.get(key);
+  const values = draft?.values || command || {channel:1, number:0, value:0};
+  const form = document.createElement('form');
+  form.className = 'midi-command';
+  const title = document.createElement('p');
+  title.className = 'midi-bank-note';
+  title.textContent = command ? `${command.channel} CC ${command.number} ${command.value}` : 'Noch kein CC-Befehl aktiv';
+  const draftStatus = document.createElement('p');
+  draftStatus.className = 'midi-draft-status';
+  draftStatus.textContent = draft ? draft.pending ? 'Wird zum Testen übernommen …' : 'Noch nicht zum Testen übernommen' : '';
+  const fields = document.createElement('div');
+  fields.className = 'midi-fields';
+  for (const [name, label, min, max, value] of [
+    ['channel', 'Kanal', 1, 16, values.channel],
+    ['cmd', 'Befehl', 0, 0, 'CC'],
+    ['number', 'CC-Nr.', 0, 127, values.number],
+    ['value', 'Wert', 0, 127, values.value]
+  ]) {
+    const wrapper = document.createElement('label');
+    wrapper.textContent = label;
+    const input = name === 'cmd' ? document.createElement('select') : document.createElement('input');
+    input.name = name;
+    if (name === 'cmd') {
+      const option = document.createElement('option');
+      option.value = 'CC';
+      option.textContent = 'CC';
+      input.appendChild(option);
+    } else {
+      input.type = 'number';
+      input.min = min;
+      input.max = max;
+      input.step = 1;
+      input.required = true;
+      input.value = value;
+      input.disabled = !!draft?.pending;
+    }
+    wrapper.appendChild(input);
+    fields.appendChild(wrapper);
+  }
+  const actions = document.createElement('div');
+  actions.className = 'midi-actions';
+  const save = document.createElement('button');
+  save.type = 'submit';
+  save.textContent = 'Zum Testen übernehmen';
+  save.dataset.pending = String(!!draft?.pending);
+  actions.appendChild(save);
+  if (command) {
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.textContent = 'Entfernen';
+    remove.onclick = async () => {
+      if (commandBlocked()) return;
+      if (await sendAction(`/api/custom-midi/remove?set=${set}&slot=${slot}&bank=${bank}&index=${index}`)) {
+        customMidiDrafts.delete(key);
+      }
+    };
+    actions.appendChild(remove);
+  }
+  form.append(title, draftStatus, fields, actions);
+  form.oninput = () => {
+    const edited = midiFormValues(form);
+    if (midiValuesMatch(edited, command)) customMidiDrafts.delete(key);
+    else customMidiDrafts.set(key, {set, slot, bank, index, values:edited, pending:false});
+    draftStatus.textContent = customMidiDrafts.has(key) ? 'Noch nicht zum Testen übernommen' : '';
+    setControls();
+  };
+  form.onsubmit = async event => {
+    event.preventDefault();
+    if (commandBlocked() || !form.reportValidity()) return;
+    const edited = midiFormValues(form);
+    const channel = Number(edited.channel);
+    const number = Number(edited.number);
+    const value = Number(edited.value);
+    if (![channel, number, value].every(Number.isInteger)) return;
+    const pending = {set, slot, bank, index, values:edited, pending:true, submittedAt:Date.now()};
+    customMidiDrafts.set(key, pending);
+    draftStatus.textContent = 'Wird zum Testen übernommen …';
+    save.dataset.pending = 'true';
+    save.disabled = true;
+    if (!await sendAction(`/api/custom-midi/command?set=${set}&slot=${slot}&bank=${bank}&index=${index}&channel=${channel}&number=${number}&value=${value}`)) {
+      pending.pending = false;
+      draftStatus.textContent = 'Noch nicht zum Testen übernommen';
+      save.dataset.pending = 'false';
+      setControls();
+    }
+  };
+  return form;
+}
+
+function renderCustomMidi(state) {
+  reconcileMidiDrafts(state);
+  reconcileMidiNameDrafts(state);
+  const draftCount = customMidiDrafts.size + customMidiNameDrafts.size;
+  text(el('custom-midi-save-state'), draftCount
+    ? `${draftCount} Änderung${draftCount === 1 ? '' : 'en'} noch zum Testen übernehmen.`
+    : state.customMidiDirty
+      ? 'Die getestete Belegung ist am Pedal aktiv, aber noch nicht dauerhaft gespeichert.'
+      : 'Alle Custom-MIDI-Einstellungen sind dauerhaft gespeichert.');
+  for (let set = 0; set < 2; ++set) {
+    const tab = el(`custom-midi-set-${set + 3}`);
+    tab.setAttribute('aria-selected', String(set === selectedCustomMidiSet));
+    tab.dataset.active = String(state.mode === 'customMidi' && state.activeCustomMidiSet === set);
+  }
+  el('custom-midi-editor').setAttribute('aria-labelledby', `custom-midi-set-${selectedCustomMidiSet + 3}`);
+  const slot = Number(el('custom-midi-slot').value);
+  const config = state.customMidi?.[selectedCustomMidiSet]?.[slot];
+  if (!config) return;
+  text(el('custom-midi-next'), config.mode === 'alternate'
+    ? `Nächste Betätigung: Bank ${config.nextBank === 0 ? 'A' : 'B'}`
+    : 'Jede Betätigung sendet Bank A.');
+  if (renderedCustomMidiRevision === state.customMidiRevision && renderedCustomMidiSet === selectedCustomMidiSet && renderedCustomMidiSlot === slot) return;
+  renderedCustomMidiRevision = state.customMidiRevision;
+  renderedCustomMidiSet = selectedCustomMidiSet;
+  renderedCustomMidiSlot = slot;
+  el('custom-midi-mode').value = config.mode;
+  el('custom-midi-name').value = customMidiNameDrafts.get(`${selectedCustomMidiSet}:${slot}`)?.value ?? config.name;
+  el('custom-midi-name').placeholder = `MIDI ${slot + 1}`;
+  text(el('custom-midi-name-note'), `Bis zu 20 Zeichen (ohne Umlaute). Leer lassen für „MIDI ${slot + 1}“.`);
+  state.customMidi[selectedCustomMidiSet].forEach((setting, index) => {
+    text(el('custom-midi-slot').options[index], `Fußtaster ${index + 1}${setting.name ? ` · ${setting.name}` : ''}`);
+  });
+  const banks = el('custom-midi-banks');
+  banks.replaceChildren();
+  config.banks.forEach((commands, bank) => {
+    if (bank === 1 && config.mode !== 'alternate' && !customMidiDrafts.has(midiDraftKey(selectedCustomMidiSet, slot, bank, 0))) return;
+    const panel = document.createElement('section');
+    panel.className = 'midi-bank';
+    const heading = document.createElement('h4');
+    heading.textContent = `Bank ${bank === 0 ? 'A' : 'B'}${bank === 1 && config.mode !== 'alternate' ? ' (derzeit inaktiv)' : ''}`;
+    panel.appendChild(heading);
+    panel.appendChild(midiEditor(selectedCustomMidiSet, slot, bank, 0, commands[0] || null));
+    banks.appendChild(panel);
+  });
+  setControls();
+}
+
+function renderState(state) {
+  text(el('preset-number'), state.presetNumber >= 0 ? String(state.presetNumber).padStart(3, '0') : '—');
+  text(el('preset'), state.presetNumber >= 0 ? state.presetName.trim() || 'Leeres Preset' : 'Warte auf MIDI');
+  text(el('scene'), state.sceneNumber >= 1 ? `Szene ${state.sceneNumber} · ${state.sceneName.trim() || 'Ohne Namen'}` : 'Noch keine aktive Szene');
+  const mode = {effects:'Effekte', scenes:'Szenen', presets:'Presets', customMidi:'Custom MIDI'}[state.mode] || '—';
+  text(el('device-mode'), `Modus: ${mode}`);
+  renderCustomMidi(state);
+  const favoriteModeText = !state.favoriteModeEnabled ? 'Relativer Presetmodus ist aktiv.'
+    : state.favoriteModeActive ? 'Die sechs Favoriten sind den Fußtastern fest zugeordnet.'
+    : 'Favoritenmodus ist aktiviert, aber noch kein Favorit belegt. Der relative Modus bleibt aktiv.';
+  text(el('favorite-mode-state'), favoriteModeText);
+  const modeButton = el('favorite-mode-btn');
+  modeButton.setAttribute('aria-pressed', String(!!state.favoriteModeEnabled));
+  text(modeButton, state.favoriteModeEnabled ? 'Deaktivieren' : 'Aktivieren');
+  if (renderedFavoritesRevision !== state.favoritesRevision) {
+    renderedFavoritesRevision = state.favoritesRevision;
+    renderFavorites();
+  }
+  text(el('scene-count'), `${state.sceneNumber >= 1 ? state.sceneNumber : '—'} / ${state.scenes.length}`);
+  updateButtons('scenegrid', state.scenes, true);
+  updateButtons('grid', state.slots, false);
+  if (!inputEdited && document.activeElement !== el('preset-input') && state.presetNumber >= 0 && !state.scanning) el('preset-input').value = state.presetNumber;
+  el('preset-input').placeholder = `0–${presetCount - 1}`;
+  const changed = activePreset !== state.presetNumber;
+  activePreset = state.presetNumber;
+  updateActivePreset();
+  if (changed && !state.scanning) centerActivePreset();
+  text(el('save-state'), !state.storageReady ? 'Der Preset-Speicher ist nicht verfügbar.' : state.unsaved ? 'Neue oder geänderte Namen sind noch nicht gespeichert.' : 'Alle Preset-Namen sind auf dem Controller gespeichert.');
+  el('scan-progress').hidden = !state.scanning;
+  text(el('scan-count'), `${state.scanProgress} / ${presetCount}`);
+  el('scan-meter').max = presetCount;
+  el('scan-meter').value = Math.max(0, Math.min(presetCount, state.scanProgress));
+  setControls();
+  renderStatus();
+}
+
+async function loadStatus() {
+  if (polling || busy) return;
+  polling = true;
+  const version = actionVersion;
+  try {
+    const state = await api('/api/status');
+    if (version !== actionVersion) return;
+    if (!Array.isArray(state.scenes) || !Array.isArray(state.slots) || !Array.isArray(state.favorites) ||
+        !Array.isArray(state.customMidi) || state.customMidi.length !== 2 ||
+        state.customMidi.some(set => !Array.isArray(set) || set.length !== 6) ||
+        state.favorites.length !== 6 || !Number.isInteger(state.presetCount)) throw new Error('Ungültigen Gerätestatus empfangen.');
+    lastState = state;
+    presetCount = state.presetCount;
+    online = true;
+    if (!networkLoaded) loadNetworkSettings();
+    if (errorSource === 'network') { uiError = ''; errorSource = ''; }
+    renderState(state);
+    try {
+      await refreshCache(state.cacheRevision);
+      if (errorSource === 'cache') { uiError = ''; errorSource = ''; renderStatus(); }
+    } catch (error) {
+      uiError = `Presetliste: ${error.message}`;
+      errorSource = 'cache';
+      el('preset-list').setAttribute('aria-busy', 'false');
+      renderStatus();
+    }
+  } catch (error) {
+    online = false;
+    uiError = `Verbindung unterbrochen: ${error.message}`;
+    errorSource = 'network';
+    setControls();
+    renderStatus();
+  } finally { polling = false; }
+}
+
+async function startScan(type) {
+  if (commandBlocked() || !lastState.ready) return;
+  const message = type === 'deep'
+    ? 'Alle Presets neu einlesen? Das Gerät wechselt dabei die Presets. Dauer etwa 4–13 Minuten. Anschließend wird das vorherige Preset wieder geladen.'
+    : 'Unbekannte Presets einlesen? Währenddessen ist die Spielsteuerung gesperrt. Anschließend wird das vorherige Preset wieder geladen.';
+  if (confirm(message)) await sendAction(`/api/scan/start?mode=${type}`);
+}
+el('preset-down').onclick = () => { if (!commandBlocked()) sendAction('/api/command?cmd=preset_down'); };
+el('preset-up').onclick = () => { if (!commandBlocked()) sendAction('/api/command?cmd=preset_up'); };
+el('save-flash-btn').onclick = () => sendAction('/api/save');
+el('favorite-mode-btn').onclick = () => {
+  if (!commandBlocked()) sendAction(`/api/favorite/mode?enabled=${lastState.favoriteModeEnabled ? 0 : 1}`);
+};
+el('scan-smart-btn').onclick = () => startScan('smart');
+el('scan-deep-btn').onclick = () => startScan('deep');
+el('scan-stop-btn').onclick = () => sendAction('/api/scan/stop');
+el('retry-btn').onclick = () => { uiError = ''; errorSource = ''; noticeUntil = 0; cacheRevision = -1; loadStatus(); };
+el('network-form').onsubmit = saveNetwork;
+for (const input of document.querySelectorAll('input[name="network-mode"]')) input.onchange = updateNetworkFields;
+el('network-dhcp').onchange = updateNetworkFields;
+for (let slot = 0; slot < 6; ++slot) {
+  const option = document.createElement('option');
+  option.value = String(slot);
+  option.textContent = `Fußtaster ${slot + 1}`;
+  el('custom-midi-slot').appendChild(option);
+}
+el('custom-midi-slot').onchange = () => { if (lastState) renderCustomMidi(lastState); };
+for (let set = 0; set < 2; ++set) {
+  el(`custom-midi-set-${set + 3}`).onclick = () => {
+    selectedCustomMidiSet = set;
+    if (lastState) renderCustomMidi(lastState);
+  };
+}
+el('custom-midi-name').oninput = () => {
+  const slot = Number(el('custom-midi-slot').value);
+  const value = el('custom-midi-name').value;
+  const key = `${selectedCustomMidiSet}:${slot}`;
+  if (value.trim() === lastState?.customMidi?.[selectedCustomMidiSet]?.[slot]?.name) customMidiNameDrafts.delete(key);
+  else customMidiNameDrafts.set(key, {set:selectedCustomMidiSet, slot, value, pending:false});
+  el('custom-midi-name').setCustomValidity('');
+  setControls();
+};
+el('custom-midi-name-form').onsubmit = async event => {
+  event.preventDefault();
+  if (commandBlocked()) return;
+  const slot = Number(el('custom-midi-slot').value);
+  const set = selectedCustomMidiSet;
+  const input = el('custom-midi-name');
+  const value = input.value.trim();
+  input.setCustomValidity(/^[\x20-\x7E]{0,20}$/.test(value) ? '' : 'Bitte nur Zeichen ohne Umlaute eingeben.');
+  if (!input.reportValidity()) return;
+  const draft = {set, slot, value, pending:true, submittedAt:Date.now()};
+  customMidiNameDrafts.set(`${set}:${slot}`, draft);
+  input.value = value;
+  setControls();
+  if (!await sendAction(`/api/custom-midi/name?set=${set}&slot=${slot}&name=${encodeURIComponent(value)}`)) {
+    draft.pending = false;
+    setControls();
+  }
+};
+el('custom-midi-mode').onchange = () => {
+  if (!commandBlocked()) sendAction(`/api/custom-midi/mode?set=${selectedCustomMidiSet}&slot=${el('custom-midi-slot').value}&mode=${el('custom-midi-mode').value === 'alternate' ? 1 : 0}`);
+};
+el('custom-midi-save').onclick = () => {
+  if (!commandBlocked() && lastState?.customMidiDirty && !customMidiDrafts.size && !customMidiNameDrafts.size)
+    sendAction('/api/custom-midi/save');
+};
+el('preset-search').oninput = () => renderPresetList(true);
+el('preset-input').oninput = () => {
+  inputEdited = true;
+  el('preset-input').removeAttribute('aria-invalid');
+  el('preset-error').hidden = true;
+};
+el('direct-choice').noValidate = true;
+el('direct-choice').onsubmit = submitPreset;
+addEventListener('hashchange', setView);
+setView();
+setControls();
+loadStatus();
+setInterval(loadStatus, 500);
+
+  </script>
+</body>
+</html>

@@ -2,6 +2,8 @@
 
 ![MidiFootController](docs/images/FootController001.JPEG)
 
+**[Bedienungsanleitung mit beschriftetem Fußschalter und aktuellen Screenshots](docs/BEDIENUNGSANLEITUNG.md)** · [Interaktive Webvorschau](docs/preview/index.html)
+
 ## Funktionen am Fussschalter
 
 Man kann zwischen drei Grundmodi und zwei Custom-MIDI-Sets umschalten. Kurze Aktionen werden beim Loslassen
@@ -37,15 +39,18 @@ in den Flash. Ohne diesen Schritt ist sie nach einem Neustart verloren.
 ## Weboberfläche
 
 ### Seite "Spielen":
-![](docs/images/Screenshot001.png)
+![](docs/preview/spielen-desktop.png)
 
 
 ### Seite "Presets":
-![](docs/images/Screenshot002.png)
+![](docs/preview/presets-desktop.png)
+
+### Seite "Custom MIDI":
+![](docs/preview/custom-midi-desktop.png)
 
 
 ### Seite "Verwaltung":
-![](docs/images/Screenshot003.png)
+![](docs/preview/verwaltung-desktop.png)
 
 
 
