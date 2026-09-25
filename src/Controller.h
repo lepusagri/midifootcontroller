@@ -15,6 +15,7 @@ constexpr int EMPTY_FAVORITE = -1;
 constexpr int SCREEN_WIDTH = 128, SCREEN_HEIGHT = 64;
 constexpr uint8_t TCA_ADDR = 0x70, MCP_ADDR = 0x20;
 constexpr unsigned long HOLD_DURATION_MS = 1000;
+constexpr unsigned long NETWORK_RESET_HOLD_MS = 10000;
 enum ControllerMode { MODE_EFFECTS, MODE_SCENES, MODE_PRESETS };
 enum class CacheState : uint8_t { Unknown, Known, Timeout };
 enum class CommandType : uint8_t { Preset, PresetUp, PresetDown, Scene,
@@ -32,6 +33,7 @@ struct EffectSlot {
   bool isPressed = false;
   unsigned long pressStartTime = 0;
   bool holdExecuted = false;
+  bool networkResetExecuted = false;
   EffectSlot(EffectId id, const char* text, uint8_t pin)
       : effectId(id), label(text), mcpPin(pin) {}
 };
@@ -88,5 +90,13 @@ void stopScan();
 void updatePresets(unsigned long now);
 void setupMidi();
 void setupWebServer();
+void setupNetwork();
 void updateNetwork(unsigned long now);
+bool networkIsAccessPoint();
+String networkAddress();
+String networkSettingsJson();
+bool saveNetworkSettings(bool accessPoint, const String& ssid, const String& password,
+                         bool dhcp, const String& address, const String& gateway,
+                         const String& subnet, const String& dns, String& error);
+void resetNetworkToAccessPoint();
 void publishWebState();

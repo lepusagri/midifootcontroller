@@ -17,16 +17,17 @@ let errorSource = '';
 let notice = '';
 let noticeUntil = 0;
 let currentView = 'spielen';
+let networkLoaded = false;
 
 function text(node, value) {
   const next = String(value);
   if (node.textContent !== next) node.textContent = next;
 }
-async function api(path, method = 'GET') {
+async function api(path, method = 'GET', body) {
   const abort = new AbortController();
   const timer = setTimeout(() => abort.abort(), 4500);
   try {
-    const response = await fetch(path, {method, cache:'no-store', signal:abort.signal});
+    const response = await fetch(path, {method, body, cache:'no-store', signal:abort.signal});
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
     return data;
@@ -68,6 +69,58 @@ function setControls() {
   el('scan-smart-btn').disabled = el('scan-deep-btn').disabled = blocked || !lastState?.ready;
   el('scan-stop-btn').disabled = busy || !online || !lastState?.scanning;
   el('save-flash-btn').disabled = busy || !online || !lastState?.storageReady || !lastState?.unsaved;
+  el('network-save').disabled = busy || !online || !networkLoaded;
+}
+
+function updateNetworkFields() {
+  const home = document.querySelector('input[name="network-mode"]:checked').value === 'home';
+  el('network-home').hidden = !home;
+  el('network-static').hidden = !home || el('network-dhcp').checked;
+}
+
+async function loadNetworkSettings() {
+  if (networkLoaded) return;
+  try {
+    const settings = await api('/api/network');
+    document.querySelector(`input[name="network-mode"][value="${settings.mode}"]`).checked = true;
+    el('network-ssid').value = settings.ssid;
+    el('network-dhcp').checked = settings.dhcp;
+    for (const key of ['ip', 'gateway', 'subnet', 'dns']) el(`network-${key}`).value = settings[key];
+    text(el('network-state'), settings.activeMode === 'ap'
+      ? `Access Point ${settings.apSsid} · ${settings.address}${settings.mode === 'home' ? ' (Heimnetz nicht erreichbar)' : ''}`
+      : `Heimnetz ${settings.ssid} · ${settings.address}`);
+    el('network-password').placeholder = settings.hasPassword ? 'Gespeichertes Passwort beibehalten' : 'Offenes Netz oder Passwort eingeben';
+    networkLoaded = true;
+    updateNetworkFields();
+    setControls();
+  } catch (error) {
+    text(el('network-state'), `Netzwerkstatus nicht verfügbar: ${error.message}`);
+  }
+}
+
+async function saveNetwork(event) {
+  event.preventDefault();
+  if (busy || !online || !networkLoaded) return;
+  const mode = document.querySelector('input[name="network-mode"]:checked').value;
+  const params = new URLSearchParams({
+    mode, ssid:el('network-ssid').value.trim(), password:el('network-password').value,
+    dhcp:el('network-dhcp').checked ? '1' : '0', ip:el('network-ip').value.trim(),
+    gateway:el('network-gateway').value.trim(), subnet:el('network-subnet').value.trim(),
+    dns:el('network-dns').value.trim()
+  });
+  el('network-error').hidden = true;
+  busy = true;
+  setControls();
+  try {
+    await api('/api/network', 'POST', params);
+    text(el('network-state'), 'Gespeichert. Der Controller startet neu. Verbinde dein Handy danach mit dem gewählten Netzwerk.');
+  } catch (error) {
+    text(el('network-error'), error.message);
+    el('network-error').hidden = false;
+  } finally {
+    busy = false;
+    setControls();
+  }
 }
 
 function renderStatus() {
@@ -359,6 +412,7 @@ async function loadStatus() {
     lastState = state;
     presetCount = state.presetCount;
     online = true;
+    if (!networkLoaded) loadNetworkSettings();
     if (errorSource === 'network') { uiError = ''; errorSource = ''; }
     renderState(state);
     try {
@@ -396,6 +450,9 @@ el('scan-smart-btn').onclick = () => startScan('smart');
 el('scan-deep-btn').onclick = () => startScan('deep');
 el('scan-stop-btn').onclick = () => sendAction('/api/scan/stop');
 el('retry-btn').onclick = () => { uiError = ''; errorSource = ''; noticeUntil = 0; cacheRevision = -1; loadStatus(); };
+el('network-form').onsubmit = saveNetwork;
+for (const input of document.querySelectorAll('input[name="network-mode"]')) input.onchange = updateNetworkFields;
+el('network-dhcp').onchange = updateNetworkFields;
 el('preset-search').oninput = () => renderPresetList(true);
 el('preset-input').oninput = () => {
   inputEdited = true;

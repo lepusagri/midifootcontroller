@@ -113,6 +113,14 @@
     .management-row { padding:24px 0; border-top:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; gap:32px; }
     .management-row p { margin-top:6px; color:var(--muted); max-width:590px; font-size:15px; }
     .management-row button { flex-shrink:0; padding:12px 20px; }
+    .network-form { display:grid; gap:16px; padding:24px 0; border-bottom:1px solid var(--border); }
+    .network-form label { display:grid; gap:6px; }
+    .network-form fieldset { display:flex; gap:20px; flex-wrap:wrap; border:0; padding:0; margin:0; }
+    .network-form fieldset label { display:flex; align-items:center; gap:8px; }
+    .network-form input[type="radio"], .network-form input[type="checkbox"] { width:auto; min-height:0; }
+    .network-fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+    #network-static { grid-column:1/-1; }
+    .network-form button { justify-self:start; padding:10px 20px; }
     .scan-progress { margin-top:20px; padding:24px; border:1px solid var(--border); border-radius:var(--radius); }
     .progress-heading { display:flex; justify-content:space-between; gap:16px; margin-bottom:16px; }
     .progress-heading span { color:var(--muted); }
@@ -186,6 +194,8 @@
       .management-row { display:block; padding:20px 0; }
       .management-row p { font-size:14px; }
       .management-row button { margin-top:16px; width:100%; }
+      .network-fields { grid-template-columns:1fr; }
+      .network-form button { width:100%; }
       .scan-progress { padding:18px; }
     }
     @media (max-width:380px) { .device-mode { display:none; } .effect-code { font-size:20px; } .effect-name { font-size:11px; } }
@@ -252,6 +262,28 @@
       <section class="management" id="management" aria-labelledby="management-heading" hidden>
         <h2 id="management-heading">Verwaltung</h2>
         <p class="management-intro">Presetmodus und gespeicherte Preset-Namen verwalten.</p>
+        <form class="network-form" id="network-form">
+          <h3>WLAN</h3>
+          <p id="network-state">Netzwerkstatus wird geladen …</p>
+          <fieldset aria-label="WLAN-Modus">
+            <label><input type="radio" name="network-mode" value="ap" checked> Access Point</label>
+            <label><input type="radio" name="network-mode" value="home"> Heimnetzwerk</label>
+          </fieldset>
+          <div id="network-home" class="network-fields" hidden>
+            <label>Netzwerkname (SSID)<input id="network-ssid" maxlength="32" autocomplete="off"></label>
+            <label>WLAN-Passwort<input id="network-password" type="password" maxlength="64" autocomplete="new-password" placeholder="Bei Änderung neu eingeben"></label>
+            <label><span>IP-Adresse automatisch beziehen</span><span><input id="network-dhcp" type="checkbox" checked> DHCP</span></label>
+            <div id="network-static" class="network-fields" hidden>
+              <label>IP-Adresse<input id="network-ip" inputmode="decimal" placeholder="192.168.1.50"></label>
+              <label>Gateway<input id="network-gateway" inputmode="decimal" placeholder="192.168.1.1"></label>
+              <label>Subnetzmaske<input id="network-subnet" inputmode="decimal" placeholder="255.255.255.0"></label>
+              <label>DNS-Server<input id="network-dns" inputmode="decimal" placeholder="192.168.1.1"></label>
+            </div>
+          </div>
+          <p>Nach dem Speichern startet der Controller neu. Access Point: 192.168.4.1, Passwort: lepus-fm3. Fußtaster 3 zehn Sekunden halten, um wieder in den Access-Point-Modus zu wechseln.</p>
+          <button class="primary" id="network-save" type="submit" disabled>WLAN speichern</button>
+          <p class="inline-error" id="network-error" role="alert" hidden></p>
+        </form>
         <div class="management-row">
           <div><h3>Favoriten im Presetmodus</h3><p id="favorite-mode-state">Einstellung wird geladen …</p></div>
           <button type="button" id="favorite-mode-btn" aria-pressed="false" disabled>Aktivieren</button>

@@ -43,10 +43,17 @@ Das Projekt ist für ein **DOIT ESP32 DevKit V1** eingerichtet.
 3. Das Board per USB anschließen, anschließend **Build** und **Upload** ausführen.
 4. Den seriellen Monitor mit 115200 Baud öffnen.
 
-Die Firmware verwendet GPIO 21/22 für I2C und GPIO 16/17 für MIDI. Vor dem
-ersten Einsatz `src/NetworkConfig.example.h` nach `src/NetworkConfig.h` kopieren
-und dort WLAN-Zugangsdaten und Hostnamen anpassen. Die lokale Konfiguration wird
-nicht eingecheckt. Die vorhandenen Zugangsdaten wurden bei der Umstellung übernommen.
+Die Firmware verwendet GPIO 21/22 für I2C und GPIO 16/17 für MIDI. Beim ersten
+Start öffnet der Controller den Access Point `Lepus-XXXXXX` (die sechs Zeichen
+sind geräteabhängig), Passwort `lepus-fm3`. Das Handy mit diesem WLAN verbinden
+und `http://192.168.4.1` öffnen. Unter **Verwaltung → WLAN** kann auf das
+Heimnetzwerk umgestellt werden. Dafür SSID und WLAN-Passwort sowie DHCP oder
+eine feste IP-Adresse mit Gateway, Subnetzmaske und DNS-Server eintragen.
+Nach dem Speichern startet der Controller neu. Die Einstellungen bleiben im
+ESP32-NVS erhalten, auch wenn das Preset-Dateisystem nicht verfügbar ist.
+Bleibt das Heimnetz 30 Sekunden unerreichbar, erscheint der Access Point wieder,
+damit die Einstellungen korrigiert werden können. Fußtaster 3 zehn Sekunden
+halten, um den Access-Point-Modus dauerhaft wiederherzustellen.
 PlatformIO lädt die externen Bibliotheken automatisch. AxeFxControl liegt mit
 dokumentierten Korrekturen in `lib/AxeFxControl`.
 

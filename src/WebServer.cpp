@@ -1,9 +1,6 @@
 #include "Controller.h"
 #include "ControllerLogic.h"
 #include "WebPage.h"
-#include "NetworkConfig.h"
-#include <WiFi.h>
-#include <ESPmDNS.h>
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
 #include <freertos/semphr.h>
@@ -12,7 +9,6 @@ static AsyncWebServer server(80);
 static SemaphoreHandle_t snapshotMutex;
 static String statusSnapshot = "{}", cacheSnapshot = "{}";
 static uint32_t publishedCacheRevision = 0;
-static bool serverStarted = false, mdnsStarted = false;
 
 static String jsonString(const char* value) {
   String result;
@@ -171,20 +167,38 @@ void setupWebServer() {
     enqueue(r, {value == "deep" ? CommandType::ScanDeep : CommandType::ScanSmart, 0});
   });
   server.on("/api/scan/stop", HTTP_POST, [](AsyncWebServerRequest* r) { enqueue(r, {CommandType::ScanStop, 0}); });
+  server.on("/api/network", HTTP_GET, [](AsyncWebServerRequest* r) {
+    auto* response = r->beginResponse(200, "application/json; charset=utf-8", networkSettingsJson());
+    response->addHeader("Cache-Control", "no-store");
+    r->send(response);
+  });
+  server.on("/api/network", HTTP_POST, [](AsyncWebServerRequest* r) {
+    auto* mode = r->getParam("mode", true);
+    auto* ssid = r->getParam("ssid", true);
+    auto* password = r->getParam("password", true);
+    auto* dhcp = r->getParam("dhcp", true);
+    auto* ip = r->getParam("ip", true);
+    auto* gateway = r->getParam("gateway", true);
+    auto* subnet = r->getParam("subnet", true);
+    auto* dns = r->getParam("dns", true);
+    if (!mode || (mode->value() != "ap" && mode->value() != "home") ||
+        (mode->value() == "home" && (!ssid || !password || !dhcp || !ip || !gateway || !subnet || !dns ||
+        (dhcp->value() != "0" && dhcp->value() != "1")))) {
+      r->send(400, "application/json", "{\"error\":\"Ungueltige Netzwerkeinstellungen\"}");
+      return;
+    }
+    String error;
+    if (!saveNetworkSettings(mode->value() == "ap", ssid ? ssid->value() : "",
+                             password ? password->value() : "", dhcp && dhcp->value() == "1",
+                             ip ? ip->value() : "", gateway ? gateway->value() : "",
+                             subnet ? subnet->value() : "", dns ? dns->value() : "", error)) {
+      String response = "{\"error\":" + jsonString(error.c_str()) + "}";
+      r->send(400, "application/json", response);
+      return;
+    }
+    r->send(202, "application/json", "{\"accepted\":true,\"restart\":true}");
+  });
   server.onNotFound([](AsyncWebServerRequest* r) { r->send(404, "application/json", "{\"error\":\"Route nicht gefunden\"}"); });
-  WiFi.mode(WIFI_STA);
-  WiFi.setHostname(HOSTNAME);
-  WiFi.setAutoReconnect(true);
-  WiFi.begin(WIFI_SSID, WIFI_PASS);
-}
-
-void updateNetwork(unsigned long now) {
-  static unsigned long lastRetry = 0;
-  if (WiFi.status() == WL_CONNECTED) {
-    if (!serverStarted) { server.begin(); serverStarted = true; Serial.println(WiFi.localIP()); }
-    if (!mdnsStarted && MDNS.begin(HOSTNAME)) { MDNS.addService("http", "tcp", 80); mdnsStarted = true; }
-  } else {
-    if (mdnsStarted) { MDNS.end(); mdnsStarted = false; }
-    if (now - lastRetry >= 30000) { lastRetry = now; WiFi.reconnect(); }
-  }
+  setupNetwork();
+  server.begin();
 }

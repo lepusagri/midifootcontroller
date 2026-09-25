@@ -62,6 +62,13 @@ void checkHardwareButtons() {
       slot.isPressed = true;
       slot.pressStartTime = now;
       slot.holdExecuted = false;
+      slot.networkResetExecuted = false;
+    }
+    if (i == 2 && !reading && slot.isPressed && !slot.networkResetExecuted &&
+        now - slot.pressStartTime >= NETWORK_RESET_HOLD_MS) {
+      slot.networkResetExecuted = true;
+      slot.holdExecuted = true;
+      resetNetworkToAccessPoint();
     }
     if (!reading && slot.isPressed && !slot.holdExecuted && now - slot.pressStartTime >= HOLD_DURATION_MS) {
       if (i == 0 || i == 1) {
@@ -80,6 +87,7 @@ void checkHardwareButtons() {
       slot.isPressed = false;
       if (!slot.holdExecuted) toggleSlot(i);
       slot.holdExecuted = false;
+      slot.networkResetExecuted = false;
     }
   }
 }
