@@ -114,6 +114,24 @@
     .management-row p { margin-top:6px; color:var(--muted); max-width:590px; font-size:15px; }
     .management-row button { flex-shrink:0; padding:12px 20px; }
     .network-form { display:grid; gap:16px; padding:24px 0; border-bottom:1px solid var(--border); }
+    .custom-midi-settings { padding:24px 0; border-top:1px solid var(--border); }
+    .custom-midi-settings > p { color:var(--muted); margin:6px 0 18px; }
+    .custom-midi-top { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin-bottom:18px; }
+    .custom-midi-top label,.midi-fields label { display:grid; gap:6px; color:var(--muted); font-size:14px; }
+    .custom-midi-top select,.midi-fields select { width:100%; min-height:48px; padding:11px 14px; color:var(--text); background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); font:inherit; }
+    .midi-banks { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
+    .midi-bank { min-width:0; padding:16px; border:1px solid var(--border); border-radius:var(--radius); }
+    .midi-bank h4 { margin:0 0 12px; font-size:17px; }
+    .midi-command { padding:12px 0; border-top:1px solid var(--border); }
+    .midi-command:first-of-type { border-top:0; }
+    .midi-fields { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; }
+    .midi-fields input { min-height:44px; padding:8px; }
+    .midi-actions { display:flex; gap:8px; margin-top:10px; }
+    .midi-actions button { padding:8px 12px; min-height:40px; }
+    .midi-bank-note { color:var(--muted); font-size:14px; margin:10px 0; }
+    .midi-draft-status { color:var(--warning); font-size:13px; min-height:18px; margin:2px 0 6px; }
+    .midi-save { display:flex; align-items:center; gap:16px; flex-wrap:wrap; margin-top:18px; }
+    .midi-save p { flex:1; min-width:240px; color:var(--muted); font-size:14px; }
     .network-form label { display:grid; gap:6px; }
     .network-form fieldset { display:flex; gap:20px; flex-wrap:wrap; border:0; padding:0; margin:0; }
     .network-form fieldset label { display:flex; align-items:center; gap:8px; }
@@ -195,6 +213,7 @@
       .management-row p { font-size:14px; }
       .management-row button { margin-top:16px; width:100%; }
       .network-fields { grid-template-columns:1fr; }
+      .custom-midi-top,.midi-banks { grid-template-columns:1fr; }
       .network-form button { width:100%; }
       .scan-progress { padding:18px; }
     }
@@ -261,7 +280,21 @@
       </section>
       <section class="management" id="management" aria-labelledby="management-heading" hidden>
         <h2 id="management-heading">Verwaltung</h2>
-        <p class="management-intro">Presetmodus und gespeicherte Preset-Namen verwalten.</p>
+        <p class="management-intro">Fußtaster, Presetmodus und gespeicherte Preset-Namen verwalten.</p>
+        <section class="custom-midi-settings" aria-labelledby="custom-midi-heading">
+          <h3 id="custom-midi-heading">Custom MIDI</h3>
+          <p>Fußtaster 3 eine Sekunde halten, um den Modus zu wechseln. Kurzes Loslassen sendet den CC-Befehl. Bei zwei Banken wechseln A und B mit jeder Betätigung. Mit „Zum Testen übernehmen“ wird eine Belegung sofort am Pedal aktiv. Erst „Alle Änderungen dauerhaft speichern“ schreibt sie in den Flash.</p>
+          <div class="custom-midi-top">
+            <label>Fußtaster<select id="custom-midi-slot"></select></label>
+            <label>Stampede-Modus<select id="custom-midi-mode"><option value="single">Single step · eine Bank</option><option value="alternate">Single step · zwei Banken</option></select></label>
+          </div>
+          <p id="custom-midi-next" class="midi-bank-note"></p>
+          <div id="custom-midi-banks" class="midi-banks"></div>
+          <div class="midi-save">
+            <p id="custom-midi-save-state" role="status">Einstellungen werden geladen …</p>
+            <button class="primary" type="button" id="custom-midi-save" disabled>Alle Änderungen dauerhaft speichern</button>
+          </div>
+        </section>
         <form class="network-form" id="network-form">
           <h3>WLAN</h3>
           <p id="network-state">Netzwerkstatus wird geladen …</p>
@@ -280,7 +313,7 @@
               <label>DNS-Server<input id="network-dns" inputmode="decimal" placeholder="192.168.1.1"></label>
             </div>
           </div>
-          <p>Nach dem Speichern startet der Controller neu. Access Point: 192.168.4.1, Passwort: lepus-fm3. Fußtaster 3 zehn Sekunden halten, um wieder in den Access-Point-Modus zu wechseln.</p>
+          <p>Nach dem Speichern startet der Controller neu. Access Point: 192.168.4.1, Passwort: lepus-fm3. Fußtaster 5 und 6 gleichzeitig zehn Sekunden halten, um wieder in den Access-Point-Modus zu wechseln.</p>
           <button class="primary" id="network-save" type="submit" disabled>WLAN speichern</button>
           <p class="inline-error" id="network-error" role="alert" hidden></p>
         </form>

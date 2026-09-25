@@ -171,6 +171,24 @@ void drawSlot(uint8_t index, bool force) {
       drawPresetTicker(index, targetPresetNum, force);
     }
   }
+  else if (currentMode == MODE_CUSTOM_MIDI) {
+    const CustomMidiSwitch& midi = customMidiSwitches[index];
+    const uint8_t bank = midi.mode == CustomMidiMode::Alternate ? midi.nextBank : 0;
+    display.clearDisplay();
+    display.setTextColor(SSD1306_WHITE);
+    display.setTextSize(2);
+    display.setCursor(4, 3);
+    display.print("MIDI ");
+    display.print(index + 1);
+    display.setTextSize(1);
+    display.setCursor(4, 26);
+    display.print(midi.mode == CustomMidiMode::Alternate ? "Naechste Bank: " : "Bank: ");
+    display.print(bank == 0 ? 'A' : 'B');
+    display.setCursor(4, 42);
+    display.print(midi.count[bank]);
+    display.print(midi.count[bank] == 1 ? " CC-Befehl" : " CC-Befehle");
+    display.display();
+  }
 }
 
 void drawAllSlots(bool force) {

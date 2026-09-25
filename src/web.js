@@ -18,6 +18,9 @@ let notice = '';
 let noticeUntil = 0;
 let currentView = 'spielen';
 let networkLoaded = false;
+let renderedCustomMidiRevision = -1;
+let renderedCustomMidiSlot = -1;
+const customMidiDrafts = new Map();
 
 function text(node, value) {
   const next = String(value);
@@ -70,6 +73,11 @@ function setControls() {
   el('scan-stop-btn').disabled = busy || !online || !lastState?.scanning;
   el('save-flash-btn').disabled = busy || !online || !lastState?.storageReady || !lastState?.unsaved;
   el('network-save').disabled = busy || !online || !networkLoaded;
+  el('custom-midi-mode').disabled = blocked;
+  el('custom-midi-save').disabled = blocked || !lastState?.customMidiDirty || customMidiDrafts.size > 0;
+  for (const button of document.querySelectorAll('#custom-midi-banks button')) {
+    button.disabled = blocked || button.dataset.pending === 'true';
+  }
 }
 
 function updateNetworkFields() {
@@ -366,12 +374,165 @@ function updateButtons(containerId, items, isScene) {
   while (parent.children.length > items.length) parent.lastElementChild.remove();
 }
 
+function midiDraftKey(slot, bank, index) { return `${slot}:${bank}:${index}`; }
+
+function midiFormValues(form) {
+  return {
+    channel: form.elements.namedItem('channel').value,
+    number: form.elements.namedItem('number').value,
+    value: form.elements.namedItem('value').value
+  };
+}
+
+function midiValuesMatch(left, right) {
+  return !!right && left.channel !== '' && left.number !== '' && left.value !== '' &&
+    Number(left.channel) === right.channel &&
+    Number(left.number) === right.number && Number(left.value) === right.value;
+}
+
+function reconcileMidiDrafts(state) {
+  let changed = false;
+  for (const [key, draft] of customMidiDrafts) {
+    if (!draft.pending) continue;
+    const command = state.customMidi?.[draft.slot]?.banks?.[draft.bank]?.[draft.index];
+    if (midiValuesMatch(draft.values, command)) customMidiDrafts.delete(key);
+    else if (Date.now() - draft.submittedAt > 5000) draft.pending = false;
+    else continue;
+    changed = true;
+  }
+  if (changed) renderedCustomMidiRevision = -1;
+}
+
+function midiEditor(slot, bank, index, command) {
+  const key = midiDraftKey(slot, bank, index);
+  const draft = customMidiDrafts.get(key);
+  const values = draft?.values || command || {channel:1, number:0, value:0};
+  const form = document.createElement('form');
+  form.className = 'midi-command';
+  const title = document.createElement('p');
+  title.className = 'midi-bank-note';
+  title.textContent = command ? `${command.channel} CC ${command.number} ${command.value}` : 'Noch kein CC-Befehl aktiv';
+  const draftStatus = document.createElement('p');
+  draftStatus.className = 'midi-draft-status';
+  draftStatus.textContent = draft ? draft.pending ? 'Wird zum Testen übernommen …' : 'Noch nicht zum Testen übernommen' : '';
+  const fields = document.createElement('div');
+  fields.className = 'midi-fields';
+  for (const [name, label, min, max, value] of [
+    ['channel', 'Kanal', 1, 16, values.channel],
+    ['cmd', 'Befehl', 0, 0, 'CC'],
+    ['number', 'CC-Nr.', 0, 127, values.number],
+    ['value', 'Wert', 0, 127, values.value]
+  ]) {
+    const wrapper = document.createElement('label');
+    wrapper.textContent = label;
+    const input = name === 'cmd' ? document.createElement('select') : document.createElement('input');
+    input.name = name;
+    if (name === 'cmd') {
+      const option = document.createElement('option');
+      option.value = 'CC';
+      option.textContent = 'CC';
+      input.appendChild(option);
+    } else {
+      input.type = 'number';
+      input.min = min;
+      input.max = max;
+      input.step = 1;
+      input.required = true;
+      input.value = value;
+      input.disabled = !!draft?.pending;
+    }
+    wrapper.appendChild(input);
+    fields.appendChild(wrapper);
+  }
+  const actions = document.createElement('div');
+  actions.className = 'midi-actions';
+  const save = document.createElement('button');
+  save.type = 'submit';
+  save.textContent = 'Zum Testen übernehmen';
+  save.dataset.pending = String(!!draft?.pending);
+  actions.appendChild(save);
+  if (command) {
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.textContent = 'Entfernen';
+    remove.onclick = async () => {
+      if (commandBlocked()) return;
+      if (await sendAction(`/api/custom-midi/remove?slot=${slot}&bank=${bank}&index=${index}`)) {
+        customMidiDrafts.delete(key);
+      }
+    };
+    actions.appendChild(remove);
+  }
+  form.append(title, draftStatus, fields, actions);
+  form.oninput = () => {
+    const edited = midiFormValues(form);
+    if (midiValuesMatch(edited, command)) customMidiDrafts.delete(key);
+    else customMidiDrafts.set(key, {slot, bank, index, values:edited, pending:false});
+    draftStatus.textContent = customMidiDrafts.has(key) ? 'Noch nicht zum Testen übernommen' : '';
+    setControls();
+  };
+  form.onsubmit = async event => {
+    event.preventDefault();
+    if (commandBlocked() || !form.reportValidity()) return;
+    const edited = midiFormValues(form);
+    const channel = Number(edited.channel);
+    const number = Number(edited.number);
+    const value = Number(edited.value);
+    if (![channel, number, value].every(Number.isInteger)) return;
+    const pending = {slot, bank, index, values:edited, pending:true, submittedAt:Date.now()};
+    customMidiDrafts.set(key, pending);
+    draftStatus.textContent = 'Wird zum Testen übernommen …';
+    save.dataset.pending = 'true';
+    save.disabled = true;
+    if (!await sendAction(`/api/custom-midi/command?slot=${slot}&bank=${bank}&index=${index}&channel=${channel}&number=${number}&value=${value}`)) {
+      pending.pending = false;
+      draftStatus.textContent = 'Noch nicht zum Testen übernommen';
+      save.dataset.pending = 'false';
+      setControls();
+    }
+  };
+  return form;
+}
+
+function renderCustomMidi(state) {
+  reconcileMidiDrafts(state);
+  text(el('custom-midi-save-state'), customMidiDrafts.size
+    ? `${customMidiDrafts.size} Eingabe${customMidiDrafts.size === 1 ? '' : 'n'} noch zum Testen übernehmen.`
+    : state.customMidiDirty
+      ? 'Die getestete Belegung ist am Pedal aktiv, aber noch nicht dauerhaft gespeichert.'
+      : 'Alle Custom-MIDI-Einstellungen sind dauerhaft gespeichert.');
+  const slot = Number(el('custom-midi-slot').value);
+  const config = state.customMidi?.[slot];
+  if (!config) return;
+  text(el('custom-midi-next'), config.mode === 'alternate'
+    ? `Nächste Betätigung: Bank ${config.nextBank === 0 ? 'A' : 'B'}`
+    : 'Jede Betätigung sendet Bank A.');
+  if (renderedCustomMidiRevision === state.customMidiRevision && renderedCustomMidiSlot === slot) return;
+  renderedCustomMidiRevision = state.customMidiRevision;
+  renderedCustomMidiSlot = slot;
+  el('custom-midi-mode').value = config.mode;
+  const banks = el('custom-midi-banks');
+  banks.replaceChildren();
+  config.banks.forEach((commands, bank) => {
+    if (bank === 1 && config.mode !== 'alternate' && !customMidiDrafts.has(midiDraftKey(slot, bank, 0))) return;
+    const panel = document.createElement('section');
+    panel.className = 'midi-bank';
+    const heading = document.createElement('h4');
+    heading.textContent = `Bank ${bank === 0 ? 'A' : 'B'}${bank === 1 && config.mode !== 'alternate' ? ' (derzeit inaktiv)' : ''}`;
+    panel.appendChild(heading);
+    panel.appendChild(midiEditor(slot, bank, 0, commands[0] || null));
+    banks.appendChild(panel);
+  });
+  setControls();
+}
+
 function renderState(state) {
   text(el('preset-number'), state.presetNumber >= 0 ? String(state.presetNumber).padStart(3, '0') : '—');
   text(el('preset'), state.presetNumber >= 0 ? state.presetName.trim() || 'Leeres Preset' : 'Warte auf MIDI');
   text(el('scene'), state.sceneNumber >= 1 ? `Szene ${state.sceneNumber} · ${state.sceneName.trim() || 'Ohne Namen'}` : 'Noch keine aktive Szene');
-  const mode = {effects:'Effekte', scenes:'Szenen', presets:'Presets'}[state.mode] || '—';
+  const mode = {effects:'Effekte', scenes:'Szenen', presets:'Presets', customMidi:'Custom MIDI'}[state.mode] || '—';
   text(el('device-mode'), `Modus: ${mode}`);
+  renderCustomMidi(state);
   const favoriteModeText = !state.favoriteModeEnabled ? 'Relativer Presetmodus ist aktiv.'
     : state.favoriteModeActive ? 'Die sechs Favoriten sind den Fußtastern fest zugeordnet.'
     : 'Favoritenmodus ist aktiviert, aber noch kein Favorit belegt. Der relative Modus bleibt aktiv.';
@@ -408,7 +569,9 @@ async function loadStatus() {
   try {
     const state = await api('/api/status');
     if (version !== actionVersion) return;
-    if (!Array.isArray(state.scenes) || !Array.isArray(state.slots) || !Array.isArray(state.favorites) || state.favorites.length !== 6 || !Number.isInteger(state.presetCount)) throw new Error('Ungültigen Gerätestatus empfangen.');
+    if (!Array.isArray(state.scenes) || !Array.isArray(state.slots) || !Array.isArray(state.favorites) ||
+        !Array.isArray(state.customMidi) || state.customMidi.length !== 6 ||
+        state.favorites.length !== 6 || !Number.isInteger(state.presetCount)) throw new Error('Ungültigen Gerätestatus empfangen.');
     lastState = state;
     presetCount = state.presetCount;
     online = true;
@@ -453,6 +616,20 @@ el('retry-btn').onclick = () => { uiError = ''; errorSource = ''; noticeUntil = 
 el('network-form').onsubmit = saveNetwork;
 for (const input of document.querySelectorAll('input[name="network-mode"]')) input.onchange = updateNetworkFields;
 el('network-dhcp').onchange = updateNetworkFields;
+for (let slot = 0; slot < 6; ++slot) {
+  const option = document.createElement('option');
+  option.value = String(slot);
+  option.textContent = `Fußtaster ${slot + 1}`;
+  el('custom-midi-slot').appendChild(option);
+}
+el('custom-midi-slot').onchange = () => { if (lastState) renderCustomMidi(lastState); };
+el('custom-midi-mode').onchange = () => {
+  if (!commandBlocked()) sendAction(`/api/custom-midi/mode?slot=${el('custom-midi-slot').value}&mode=${el('custom-midi-mode').value === 'alternate' ? 1 : 0}`);
+};
+el('custom-midi-save').onclick = () => {
+  if (!commandBlocked() && lastState?.customMidiDirty && !customMidiDrafts.size)
+    sendAction('/api/custom-midi/save');
+};
 el('preset-search').oninput = () => renderPresetList(true);
 el('preset-input').oninput = () => {
   inputEdited = true;

@@ -4,16 +4,28 @@
 
 ## Funktionen am Fussschalter
 
-Man kann zwischen drei Modi umschalten.
+Man kann zwischen vier Modi umschalten. Kurze Aktionen werden beim Loslassen
+ausgeführt; ein HOLD unterdrückt die kurze Aktion.
 
 1. Effektmodus - Defaultmodus
 2. Szenenmodus - Fusstaster1-HOLD (länger drücken)
 3. Presetmodus - Fusstaster2-HOLD 
+4. Custom MIDI - Fusstaster3-HOLD; ein weiterer HOLD führt zum vorherigen Modus zurück
 
 #### Weitere Funktionen:
 
 - Fusstaster 5-HOLD --> Preset +1
 - Fusstaster 6-HOLD --> Preset -1
+- Fusstaster 5 und 6 gleichzeitig zehn Sekunden halten --> Netzwerk auf Access Point zurücksetzen
+
+Im Custom-MIDI-Modus kann jeder der sechs Fusstaster einen CC-Befehl pro
+Bank senden. Unter **Verwaltung → Custom MIDI** werden MIDI-Kanal (1–16),
+CC-Nummer und Wert (je 0–127) eingestellt. „Single step · eine Bank“ sendet
+immer Bank A; „Single step · zwei Banken“ wechselt pro kurzem Tastendruck
+zwischen A und B. „Zum Testen übernehmen“ aktiviert eine Änderung sofort im
+Controller-RAM, damit sie mit dem Fußtaster ausprobiert werden kann. Erst
+„Alle Änderungen dauerhaft speichern“ schreibt die getestete Konfiguration
+in den Flash. Ohne diesen Schritt ist sie nach einem Neustart verloren.
 
 
 
@@ -52,8 +64,8 @@ eine feste IP-Adresse mit Gateway, Subnetzmaske und DNS-Server eintragen.
 Nach dem Speichern startet der Controller neu. Die Einstellungen bleiben im
 ESP32-NVS erhalten, auch wenn das Preset-Dateisystem nicht verfügbar ist.
 Bleibt das Heimnetz 30 Sekunden unerreichbar, erscheint der Access Point wieder,
-damit die Einstellungen korrigiert werden können. Fußtaster 3 zehn Sekunden
-halten, um den Access-Point-Modus dauerhaft wiederherzustellen.
+damit die Einstellungen korrigiert werden können. Fußtaster 5 und 6 gleichzeitig
+zehn Sekunden halten, um den Access-Point-Modus dauerhaft wiederherzustellen.
 PlatformIO lädt die externen Bibliotheken automatisch. AxeFxControl liegt mit
 dokumentierten Korrekturen in `lib/AxeFxControl`.
 
@@ -62,6 +74,7 @@ dokumentierten Korrekturen in `lib/AxeFxControl`.
 - `src/LepusMidiController.cpp`: Initialisierung, gemeinsamer Zustand und Hauptschleife.
 - `src/Presets.cpp`: MIDI-Synchronisierung, Szenennamen, Scanner und Cachedatei.
 - `src/Controls.cpp`: Taster und zentral ausgeführte Steuerbefehle.
+- `src/CustomMidi.cpp`: CC-Belegung und dauerhafte Speicherung.
 - `src/Display.cpp`: OLED-Ausgabe und Laufschrift.
 - `src/WebServer.cpp`: validierte HTTP-Endpunkte, Befehlsqueue und Statuskopien.
 - `src/web.html`, `src/web.js`: Weboberfläche; beim Build in ein Header eingebettet.

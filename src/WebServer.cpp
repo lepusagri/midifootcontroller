@@ -19,7 +19,7 @@ static String jsonString(const char* value) {
 void publishWebState() {
   if (!snapshotMutex) return;
   String json;
-  json.reserve(2200);
+  json.reserve(7500);
   json = "{\"scanning\":" + String(isScanning ? "true" : "false");
   json += ",\"scanProgress\":" + String(scanCurrentPreset);
   json += ",\"presetCount\":" + String(PRESET_COUNT);
@@ -41,8 +41,34 @@ void publishWebState() {
     json += String(favoritePresets[i]);
   }
   json += ']';
-  const char* mode = currentMode == MODE_EFFECTS ? "effects" : currentMode == MODE_SCENES ? "scenes" : "presets";
+  const char* mode = currentMode == MODE_EFFECTS ? "effects" : currentMode == MODE_SCENES ? "scenes" :
+                     currentMode == MODE_PRESETS ? "presets" : "customMidi";
   json += ",\"mode\":" + jsonString(mode);
+  json += ",\"customMidiRevision\":" + String(customMidiRevision);
+  json += ",\"customMidiDirty\":" + String(customMidiDirty ? "true" : "false");
+  json += ",\"customMidi\":[";
+  for (uint8_t slot = 0; slot < NUM_SWITCHES; ++slot) {
+    if (slot) json += ',';
+    const CustomMidiSwitch& setting = customMidiSwitches[slot];
+    json += "{\"mode\":\"";
+    json += setting.mode == CustomMidiMode::Alternate ? "alternate" : "single";
+    json += "\",\"nextBank\":" + String(setting.nextBank);
+    json += ",\"banks\":[";
+    for (uint8_t bank = 0; bank < CUSTOM_MIDI_BANKS; ++bank) {
+      if (bank) json += ',';
+      json += '[';
+      for (uint8_t index = 0; index < setting.count[bank]; ++index) {
+        if (index) json += ',';
+        const CustomMidiCommand& midi = setting.commands[bank][index];
+        json += "{\"cmd\":\"CC\",\"channel\":" + String(midi.channel);
+        json += ",\"number\":" + String(midi.number);
+        json += ",\"value\":" + String(midi.value) + '}';
+      }
+      json += ']';
+    }
+    json += "]}";
+  }
+  json += ']';
   json += ",\"scenes\":[";
   for (int i = 0; i < AxeSystem::MAX_SCENES; ++i) {
     if (i) json += ',';
@@ -159,6 +185,32 @@ void setupWebServer() {
   server.on("/api/favorite/mode", HTTP_POST, [](AsyncWebServerRequest* r) {
     int value;
     if (numberParam(r, "enabled", 0, 1, value)) enqueue(r, {CommandType::FavoriteMode, value});
+  });
+  server.on("/api/custom-midi/mode", HTTP_POST, [](AsyncWebServerRequest* r) {
+    int slot, mode;
+    if (!numberParam(r, "slot", 0, NUM_SWITCHES - 1, slot) ||
+        !numberParam(r, "mode", 0, 1, mode)) return;
+    enqueue(r, {CommandType::CustomMidiSetMode, slot, mode});
+  });
+  server.on("/api/custom-midi/command", HTTP_POST, [](AsyncWebServerRequest* r) {
+    int slot, bank, index, channel, number, value;
+    if (!numberParam(r, "slot", 0, NUM_SWITCHES - 1, slot) ||
+        !numberParam(r, "bank", 0, CUSTOM_MIDI_BANKS - 1, bank) ||
+        !numberParam(r, "index", 0, 0, index) ||
+        !numberParam(r, "channel", 1, 16, channel) ||
+        !numberParam(r, "number", 0, 127, number) ||
+        !numberParam(r, "value", 0, 127, value)) return;
+    enqueue(r, {CommandType::CustomMidiSetCommand, slot, bank, index, channel, number, value});
+  });
+  server.on("/api/custom-midi/remove", HTTP_POST, [](AsyncWebServerRequest* r) {
+    int slot, bank, index;
+    if (!numberParam(r, "slot", 0, NUM_SWITCHES - 1, slot) ||
+        !numberParam(r, "bank", 0, CUSTOM_MIDI_BANKS - 1, bank) ||
+        !numberParam(r, "index", 0, 0, index)) return;
+    enqueue(r, {CommandType::CustomMidiRemoveCommand, slot, bank, index});
+  });
+  server.on("/api/custom-midi/save", HTTP_POST, [](AsyncWebServerRequest* r) {
+    enqueue(r, {CommandType::CustomMidiSave, 0});
   });
   server.on("/api/scan/start", HTTP_POST, [](AsyncWebServerRequest* r) {
     auto* parameter = r->getParam("mode");

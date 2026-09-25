@@ -6,6 +6,7 @@
 #include <AxeFxControl.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/queue.h>
+#include "CustomMidi.h"
 
 constexpr int PRESET_COUNT = 501;
 constexpr int LAST_PRESET = PRESET_COUNT - 1;
@@ -16,12 +17,18 @@ constexpr int SCREEN_WIDTH = 128, SCREEN_HEIGHT = 64;
 constexpr uint8_t TCA_ADDR = 0x70, MCP_ADDR = 0x20;
 constexpr unsigned long HOLD_DURATION_MS = 1000;
 constexpr unsigned long NETWORK_RESET_HOLD_MS = 10000;
-enum ControllerMode { MODE_EFFECTS, MODE_SCENES, MODE_PRESETS };
+enum ControllerMode { MODE_EFFECTS, MODE_SCENES, MODE_PRESETS, MODE_CUSTOM_MIDI };
 enum class CacheState : uint8_t { Unknown, Known, Timeout };
 enum class CommandType : uint8_t { Preset, PresetUp, PresetDown, Scene,
   SceneUp, SceneDown, Effect, ScanSmart, ScanDeep, ScanStop, Save,
-  FavoriteToggle, FavoriteMove, FavoriteMode };
-struct Command { CommandType type; int value; int secondary; };
+  FavoriteToggle, FavoriteMove, FavoriteMode, CustomMidiTrigger,
+  CustomMidiSetMode, CustomMidiSetCommand, CustomMidiRemoveCommand, CustomMidiSave };
+struct Command { CommandType type; int value; int secondary = 0; int third = 0;
+  int fourth = 0; int fifth = 0; int sixth = 0;
+  Command(CommandType t, int v, int s = 0, int a = 0, int b = 0, int c = 0, int d = 0)
+      : type(t), value(v), secondary(s), third(a), fourth(b), fifth(c), sixth(d) {}
+  Command() : type(CommandType::Save), value(0) {}
+};
 struct EffectSlot {
   EffectId effectId;
   const char* label;
@@ -33,7 +40,6 @@ struct EffectSlot {
   bool isPressed = false;
   unsigned long pressStartTime = 0;
   bool holdExecuted = false;
-  bool networkResetExecuted = false;
   EffectSlot(EffectId id, const char* text, uint8_t pin)
       : effectId(id), label(text), mcpPin(pin) {}
 };

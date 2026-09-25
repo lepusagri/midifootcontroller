@@ -23,6 +23,7 @@ void setup() {
   if (!commandQueue) Serial.println("Befehlsqueue konnte nicht angelegt werden");
   loadPresetCache();
   loadFavoriteSettings();
+  loadCustomMidiSettings();
   setupDisplays();
   setupHardwareButtons();
   setupMidi();
