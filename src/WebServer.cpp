@@ -52,7 +52,8 @@ void publishWebState() {
     const CustomMidiSwitch& setting = customMidiSwitches[slot];
     json += "{\"mode\":\"";
     json += setting.mode == CustomMidiMode::Alternate ? "alternate" : "single";
-    json += "\",\"nextBank\":" + String(setting.nextBank);
+    json += "\",\"name\":" + jsonString(setting.name);
+    json += ",\"nextBank\":" + String(setting.nextBank);
     json += ",\"banks\":[";
     for (uint8_t bank = 0; bank < CUSTOM_MIDI_BANKS; ++bank) {
       if (bank) json += ',';
@@ -191,6 +192,32 @@ void setupWebServer() {
     if (!numberParam(r, "slot", 0, NUM_SWITCHES - 1, slot) ||
         !numberParam(r, "mode", 0, 1, mode)) return;
     enqueue(r, {CommandType::CustomMidiSetMode, slot, mode});
+  });
+  server.on("/api/custom-midi/name", HTTP_POST, [](AsyncWebServerRequest* r) {
+    // +++++++++++++++++++++++++++++++++
+    int iSlot = 0;
+    const AsyncWebParameter* ptParameter = nullptr;
+    String sName;
+    Command tCommand{CommandType::CustomMidiSetName, 0};
+    // +++++++++++++++++++++++++++++++++
+    if (!numberParam(r, "slot", 0, NUM_SWITCHES - 1, iSlot)) return;
+    ptParameter = r->getParam("name");
+    if (!ptParameter) { r->send(400, "application/json", "{\"error\":\"Name fehlt\"}"); return; }
+    sName = ptParameter->value();
+    sName.trim();
+    if (sName.length() > CUSTOM_MIDI_NAME_LENGTH) {
+      r->send(400, "application/json", "{\"error\":\"Name zu lang\"}");
+      return;
+    }
+    for (size_t iIndex = 0; iIndex < sName.length(); ++iIndex) {
+      if (sName[iIndex] < ' ' || sName[iIndex] > '~') {
+        r->send(400, "application/json", "{\"error\":\"Nur darstellbare ASCII-Zeichen erlaubt\"}");
+        return;
+      }
+    }
+    tCommand.value = iSlot;
+    memcpy(tCommand.name, sName.c_str(), sName.length() + 1);
+    enqueue(r, tCommand);
   });
   server.on("/api/custom-midi/command", HTTP_POST, [](AsyncWebServerRequest* r) {
     int slot, bank, index, channel, number, value;

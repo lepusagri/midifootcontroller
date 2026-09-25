@@ -38,6 +38,7 @@ void executeCommand(const Command& command) {
     case CommandType::CustomMidiTrigger: triggerCustomMidi(command.value); break;
     case CommandType::CustomMidiSetMode:
       setCustomMidiMode(command.value, static_cast<CustomMidiMode>(command.secondary)); break;
+    case CommandType::CustomMidiSetName: setCustomMidiName(command.value, command.name); break;
     case CommandType::CustomMidiSetCommand:
       setCustomMidiCommand(command.value, command.secondary, command.third,
                            command.fourth, command.fifth, command.sixth); break;

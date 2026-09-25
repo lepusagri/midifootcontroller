@@ -19,8 +19,10 @@ ausgeführt; ein HOLD unterdrückt die kurze Aktion.
 - Fusstaster 5 und 6 gleichzeitig zehn Sekunden halten --> Netzwerk auf Access Point zurücksetzen
 
 Im Custom-MIDI-Modus kann jeder der sechs Fusstaster einen CC-Befehl pro
-Bank senden. Unter **Verwaltung → Custom MIDI** werden MIDI-Kanal (1–16),
-CC-Nummer und Wert (je 0–127) eingestellt. „Single step · eine Bank“ sendet
+Bank senden. Auf der Seite **Custom MIDI** werden pro Fußtaster ein OLED-Name
+(bis zu 20 Zeichen ohne Umlaute), MIDI-Kanal (1–16), CC-Nummer und Wert
+(je 0–127) eingestellt. Ein leerer Name zeigt weiterhin „MIDI 1“ bis „MIDI 6“.
+„Single step · eine Bank“ sendet
 immer Bank A; „Single step · zwei Banken“ wechselt pro kurzem Tastendruck
 zwischen A und B. „Zum Testen übernehmen“ aktiviert eine Änderung sofort im
 Controller-RAM, damit sie mit dem Fußtaster ausprobiert werden kann. Erst

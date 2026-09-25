@@ -22,9 +22,10 @@ enum class CacheState : uint8_t { Unknown, Known, Timeout };
 enum class CommandType : uint8_t { Preset, PresetUp, PresetDown, Scene,
   SceneUp, SceneDown, Effect, ScanSmart, ScanDeep, ScanStop, Save,
   FavoriteToggle, FavoriteMove, FavoriteMode, CustomMidiTrigger,
-  CustomMidiSetMode, CustomMidiSetCommand, CustomMidiRemoveCommand, CustomMidiSave };
+  CustomMidiSetMode, CustomMidiSetName, CustomMidiSetCommand, CustomMidiRemoveCommand, CustomMidiSave };
 struct Command { CommandType type; int value; int secondary = 0; int third = 0;
   int fourth = 0; int fifth = 0; int sixth = 0;
+  char name[CUSTOM_MIDI_NAME_LENGTH + 1] = {};
   Command(CommandType t, int v, int s = 0, int a = 0, int b = 0, int c = 0, int d = 0)
       : type(t), value(v), secondary(s), third(a), fourth(b), fifth(c), sixth(d) {}
   Command() : type(CommandType::Save), value(0) {}

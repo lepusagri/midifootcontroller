@@ -172,21 +172,35 @@ void drawSlot(uint8_t index, bool force) {
     }
   }
   else if (currentMode == MODE_CUSTOM_MIDI) {
+    // +++++++++++++++++++++++++++++++++
+    char sDefaultName[8] = {};
+    int16_t shX = 0, shY = 0;
+    uint16_t uiWidth = 0, uiHeight = 0;
+    // +++++++++++++++++++++++++++++++++
     const CustomMidiSwitch& midi = customMidiSwitches[index];
     const uint8_t bank = midi.mode == CustomMidiMode::Alternate ? midi.nextBank : 0;
+    snprintf(sDefaultName, sizeof(sDefaultName), "MIDI %u", static_cast<unsigned>(index + 1));
+    const char* psName = midi.name[0] ? midi.name : sDefaultName;
     display.clearDisplay();
     display.setTextColor(SSD1306_WHITE);
-    display.setTextSize(2);
-    display.setCursor(4, 3);
-    display.print("MIDI ");
-    display.print(index + 1);
+    display.setTextSize(strlen(psName) <= 10 ? 2 : 1);
+    display.getTextBounds(psName, 0, 0, &shX, &shY, &uiWidth, &uiHeight);
+    display.setCursor((SCREEN_WIDTH - uiWidth) / 2, 3);
+    display.print(psName);
     display.setTextSize(1);
     display.setCursor(4, 26);
     display.print(midi.mode == CustomMidiMode::Alternate ? "Naechste Bank: " : "Bank: ");
     display.print(bank == 0 ? 'A' : 'B');
     display.setCursor(4, 42);
-    display.print(midi.count[bank]);
-    display.print(midi.count[bank] == 1 ? " CC-Befehl" : " CC-Befehle");
+    if (midi.count[bank]) {
+      const CustomMidiCommand& tCommand = midi.commands[bank][0];
+      display.print("CC #");
+      display.print(tCommand.number);
+      display.print(' ');
+      display.print(tCommand.value);
+    } else {
+      display.print("Kein Kommando");
+    }
     display.display();
   }
 }

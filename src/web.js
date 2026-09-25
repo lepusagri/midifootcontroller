@@ -1,6 +1,6 @@
 const el = id => document.getElementById(id);
 const effectNames = {CMP:'Kompressor', DRV:'Drive', MOD:'Modulation', DLY:'Delay', REV:'Reverb', BST:'Boost'};
-const viewNames = ['spielen', 'presets', 'verwaltung'];
+const viewNames = ['spielen', 'presets', 'custom-midi', 'verwaltung'];
 let busy = false;
 let polling = false;
 let online = false;
@@ -21,6 +21,7 @@ let networkLoaded = false;
 let renderedCustomMidiRevision = -1;
 let renderedCustomMidiSlot = -1;
 const customMidiDrafts = new Map();
+const customMidiNameDrafts = new Map();
 
 function text(node, value) {
   const next = String(value);
@@ -49,8 +50,9 @@ function setView() {
   }
   el('workspace').dataset.view = currentView;
   el('performance').hidden = currentView !== 'spielen';
-  el('preset-browser').hidden = currentView === 'verwaltung';
+  el('preset-browser').hidden = currentView === 'verwaltung' || currentView === 'custom-midi';
   el('management').hidden = currentView !== 'verwaltung';
+  el('custom-midi-settings').hidden = currentView !== 'custom-midi';
   if (currentView === 'presets') centerActivePreset();
 }
 
@@ -74,7 +76,10 @@ function setControls() {
   el('save-flash-btn').disabled = busy || !online || !lastState?.storageReady || !lastState?.unsaved;
   el('network-save').disabled = busy || !online || !networkLoaded;
   el('custom-midi-mode').disabled = blocked;
-  el('custom-midi-save').disabled = blocked || !lastState?.customMidiDirty || customMidiDrafts.size > 0;
+  const nameDraft = customMidiNameDrafts.get(Number(el('custom-midi-slot').value));
+  el('custom-midi-name-submit').disabled = blocked || !nameDraft || nameDraft.pending;
+  el('custom-midi-name').disabled = !!nameDraft?.pending;
+  el('custom-midi-save').disabled = blocked || !lastState?.customMidiDirty || customMidiDrafts.size > 0 || customMidiNameDrafts.size > 0;
   for (const button of document.querySelectorAll('#custom-midi-banks button')) {
     button.disabled = blocked || button.dataset.pending === 'true';
   }
@@ -403,6 +408,18 @@ function reconcileMidiDrafts(state) {
   if (changed) renderedCustomMidiRevision = -1;
 }
 
+function reconcileMidiNameDrafts(state) {
+  let changed = false;
+  for (const [slot, draft] of customMidiNameDrafts) {
+    if (!draft.pending) continue;
+    if (state.customMidi?.[slot]?.name === draft.value) customMidiNameDrafts.delete(slot);
+    else if (Date.now() - draft.submittedAt > 5000) draft.pending = false;
+    else continue;
+    changed = true;
+  }
+  if (changed) renderedCustomMidiRevision = -1;
+}
+
 function midiEditor(slot, bank, index, command) {
   const key = midiDraftKey(slot, bank, index);
   const draft = customMidiDrafts.get(key);
@@ -496,8 +513,10 @@ function midiEditor(slot, bank, index, command) {
 
 function renderCustomMidi(state) {
   reconcileMidiDrafts(state);
-  text(el('custom-midi-save-state'), customMidiDrafts.size
-    ? `${customMidiDrafts.size} Eingabe${customMidiDrafts.size === 1 ? '' : 'n'} noch zum Testen übernehmen.`
+  reconcileMidiNameDrafts(state);
+  const draftCount = customMidiDrafts.size + customMidiNameDrafts.size;
+  text(el('custom-midi-save-state'), draftCount
+    ? `${draftCount} Änderung${draftCount === 1 ? '' : 'en'} noch zum Testen übernehmen.`
     : state.customMidiDirty
       ? 'Die getestete Belegung ist am Pedal aktiv, aber noch nicht dauerhaft gespeichert.'
       : 'Alle Custom-MIDI-Einstellungen sind dauerhaft gespeichert.');
@@ -511,6 +530,12 @@ function renderCustomMidi(state) {
   renderedCustomMidiRevision = state.customMidiRevision;
   renderedCustomMidiSlot = slot;
   el('custom-midi-mode').value = config.mode;
+  el('custom-midi-name').value = customMidiNameDrafts.get(slot)?.value ?? config.name;
+  el('custom-midi-name').placeholder = `MIDI ${slot + 1}`;
+  text(el('custom-midi-name-note'), `Bis zu 20 Zeichen (ohne Umlaute). Leer lassen für „MIDI ${slot + 1}“.`);
+  state.customMidi.forEach((setting, index) => {
+    text(el('custom-midi-slot').options[index], `Fußtaster ${index + 1}${setting.name ? ` · ${setting.name}` : ''}`);
+  });
   const banks = el('custom-midi-banks');
   banks.replaceChildren();
   config.banks.forEach((commands, bank) => {
@@ -623,6 +648,31 @@ for (let slot = 0; slot < 6; ++slot) {
   el('custom-midi-slot').appendChild(option);
 }
 el('custom-midi-slot').onchange = () => { if (lastState) renderCustomMidi(lastState); };
+el('custom-midi-name').oninput = () => {
+  const slot = Number(el('custom-midi-slot').value);
+  const value = el('custom-midi-name').value;
+  if (value.trim() === lastState?.customMidi?.[slot]?.name) customMidiNameDrafts.delete(slot);
+  else customMidiNameDrafts.set(slot, {value, pending:false});
+  el('custom-midi-name').setCustomValidity('');
+  setControls();
+};
+el('custom-midi-name-form').onsubmit = async event => {
+  event.preventDefault();
+  if (commandBlocked()) return;
+  const slot = Number(el('custom-midi-slot').value);
+  const input = el('custom-midi-name');
+  const value = input.value.trim();
+  input.setCustomValidity(/^[\x20-\x7E]{0,20}$/.test(value) ? '' : 'Bitte nur Zeichen ohne Umlaute eingeben.');
+  if (!input.reportValidity()) return;
+  const draft = {value, pending:true, submittedAt:Date.now()};
+  customMidiNameDrafts.set(slot, draft);
+  input.value = value;
+  setControls();
+  if (!await sendAction(`/api/custom-midi/name?slot=${slot}&name=${encodeURIComponent(value)}`)) {
+    draft.pending = false;
+    setControls();
+  }
+};
 el('custom-midi-mode').onchange = () => {
   if (!commandBlocked()) sendAction(`/api/custom-midi/mode?slot=${el('custom-midi-slot').value}&mode=${el('custom-midi-mode').value === 'alternate' ? 1 : 0}`);
 };

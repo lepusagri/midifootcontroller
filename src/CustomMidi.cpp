@@ -3,7 +3,7 @@
 #include <string.h>
 
 #define CUSTOM_MIDI_MAGIC 0x4C434D49u
-#define CUSTOM_MIDI_VERSION 1u
+#define CUSTOM_MIDI_VERSION 2u
 #define CUSTOM_MIDI_STORED_COMMANDS 8u
 
 typedef struct {
@@ -23,6 +23,13 @@ typedef struct {
   uint32_t uiMagic;
   uint8_t uiVersion;
   T_STORED_MIDI_SWITCH tSwitches[NUM_SWITCHES];
+} T_STORED_MIDI_SETTINGS_V1;
+
+typedef struct {
+  uint32_t uiMagic;
+  uint8_t uiVersion;
+  T_STORED_MIDI_SWITCH tSwitches[NUM_SWITCHES];
+  char sNames[NUM_SWITCHES][CUSTOM_MIDI_NAME_LENGTH + 1];
 } T_STORED_MIDI_SETTINGS;
 
 CustomMidiSwitch customMidiSwitches[NUM_SWITCHES];
@@ -46,6 +53,7 @@ static bool saveCustomMidiSettings() {
     const CustomMidiSwitch& tSource = customMidiSwitches[uiSlot];
     T_STORED_MIDI_SWITCH& tTarget = tStored.tSwitches[uiSlot];
     tTarget.uiMode = static_cast<uint8_t>(tSource.mode);
+    memcpy(tStored.sNames[uiSlot], tSource.name, sizeof(tSource.name));
     for (uint8_t uiBank = 0; uiBank < CUSTOM_MIDI_BANKS; ++uiBank) {
       tTarget.uiCount[uiBank] = tSource.count[uiBank];
       for (uint8_t uiIndex = 0; uiIndex < tSource.count[uiBank]; ++uiIndex) {
@@ -82,17 +90,38 @@ static void markCustomMidiChanged(const char* psMessage) {
 void loadCustomMidiSettings() {
   // +++++++++++++++++++++++++++++++++
   T_STORED_MIDI_SETTINGS tStored = {};
+  T_STORED_MIDI_SETTINGS_V1 tLegacy = {};
   Preferences tPreferences;
   bool bLoaded = false;
+  size_t iLength = 0;
   // +++++++++++++++++++++++++++++++++
   if (!tPreferences.begin("lepus-custom", true)) return;
-  bLoaded = tPreferences.getBytesLength("settings") == sizeof(tStored) &&
-            tPreferences.getBytes("settings", &tStored, sizeof(tStored)) == sizeof(tStored);
+  iLength = tPreferences.getBytesLength("settings");
+  if (iLength == sizeof(tStored)) {
+    bLoaded = tPreferences.getBytes("settings", &tStored, sizeof(tStored)) == sizeof(tStored);
+  } else if (iLength == sizeof(tLegacy)) {
+    bLoaded = tPreferences.getBytes("settings", &tLegacy, sizeof(tLegacy)) == sizeof(tLegacy);
+    if (bLoaded) {
+      tStored.uiMagic = tLegacy.uiMagic;
+      tStored.uiVersion = tLegacy.uiVersion;
+      memcpy(tStored.tSwitches, tLegacy.tSwitches, sizeof(tLegacy.tSwitches));
+    }
+  }
   tPreferences.end();
-  if (!bLoaded || tStored.uiMagic != CUSTOM_MIDI_MAGIC || tStored.uiVersion != CUSTOM_MIDI_VERSION) return;
+  if (!bLoaded || tStored.uiMagic != CUSTOM_MIDI_MAGIC ||
+      (iLength == sizeof(tLegacy) ? tStored.uiVersion != 1 : tStored.uiVersion != CUSTOM_MIDI_VERSION)) return;
   for (uint8_t uiSlot = 0; uiSlot < NUM_SWITCHES; ++uiSlot) {
     const T_STORED_MIDI_SWITCH& tSwitch = tStored.tSwitches[uiSlot];
     if (tSwitch.uiMode > static_cast<uint8_t>(CustomMidiMode::Alternate)) return;
+    if (iLength == sizeof(tStored)) {
+      bool bTerminated = false;
+      for (uint8_t uiIndex = 0; uiIndex <= CUSTOM_MIDI_NAME_LENGTH; ++uiIndex) {
+        const char cChar = tStored.sNames[uiSlot][uiIndex];
+        if (!cChar) { bTerminated = true; break; }
+        if (cChar < ' ' || cChar > '~') return;
+      }
+      if (!bTerminated) return;
+    }
     for (uint8_t uiBank = 0; uiBank < CUSTOM_MIDI_BANKS; ++uiBank) {
       if (tSwitch.uiCount[uiBank] > CUSTOM_MIDI_STORED_COMMANDS) return;
       for (uint8_t uiIndex = 0; uiIndex < tSwitch.uiCount[uiBank]; ++uiIndex) {
@@ -106,6 +135,7 @@ void loadCustomMidiSettings() {
   for (uint8_t uiSlot = 0; uiSlot < NUM_SWITCHES; ++uiSlot) {
     CustomMidiSwitch& tTarget = customMidiSwitches[uiSlot];
     const T_STORED_MIDI_SWITCH& tSource = tStored.tSwitches[uiSlot];
+    memcpy(tTarget.name, tStored.sNames[uiSlot], sizeof(tTarget.name));
     tTarget.mode = static_cast<CustomMidiMode>(tSource.uiMode);
     for (uint8_t uiBank = 0; uiBank < CUSTOM_MIDI_BANKS; ++uiBank) {
       // Older configurations may contain several commands; retain the first one.
@@ -155,6 +185,25 @@ void setCustomMidiMode(uint8_t uiSlot, CustomMidiMode eMode) {
 }
 
 //=================================================================================================
+// Function     : setCustomMidiName
+// Purpose      : Activate a footswitch label in RAM for OLED testing.
+// Return Value : void
+//=================================================================================================
+void setCustomMidiName(uint8_t uiSlot, const char* psName) {
+  if (uiSlot >= NUM_SWITCHES || !psName) return;
+  size_t iLength = 0;
+  while (psName[iLength] && iLength <= CUSTOM_MIDI_NAME_LENGTH) {
+    if (psName[iLength] < ' ' || psName[iLength] > '~') return;
+    ++iLength;
+  }
+  if (iLength > CUSTOM_MIDI_NAME_LENGTH) return;
+  CustomMidiSwitch& tSwitch = customMidiSwitches[uiSlot];
+  if (strcmp(tSwitch.name, psName) == 0) return;
+  memcpy(tSwitch.name, psName, iLength + 1);
+  markCustomMidiChanged("Custom-MIDI-Name zum Testen aktiv");
+}
+
+//=================================================================================================
 // Function     : setCustomMidiCommand
 // Purpose      : Save the single CC command assigned to a bank.
 // Return Value : void
@@ -200,5 +249,5 @@ void saveCustomMidiConfiguration() {
     return;
   }
   customMidiDirty = false;
-  lastOperation = "Alle Custom-MIDI-Befehle gespeichert";
+  lastOperation = "Alle Custom-MIDI-Einstellungen gespeichert";
 }

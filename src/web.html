@@ -107,18 +107,25 @@
     .workspace[data-view="presets"] { grid-template-columns:minmax(0,1fr); max-width:900px; margin:auto; }
     .workspace[data-view="presets"] .preset-browser { padding-left:0; border-left:0; }
     .workspace[data-view="presets"] .preset-list { height:min(480px,52vh); }
+    .workspace[data-view="spielen"] .preset-save-row { display:none; }
     .management { max-width:960px; width:100%; margin:0 auto; }
     .workspace[data-view="verwaltung"] { display:block; }
+    .workspace[data-view="custom-midi"] { display:block; }
     .management-intro { color:var(--muted); margin:8px 0 24px; max-width:680px; }
     .management-row { padding:24px 0; border-top:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; gap:32px; }
     .management-row p { margin-top:6px; color:var(--muted); max-width:590px; font-size:15px; }
     .management-row button { flex-shrink:0; padding:12px 20px; }
     .network-form { display:grid; gap:16px; padding:24px 0; border-bottom:1px solid var(--border); }
-    .custom-midi-settings { padding:24px 0; border-top:1px solid var(--border); }
+    .custom-midi-settings { max-width:960px; width:100%; margin:0 auto; }
     .custom-midi-settings > p { color:var(--muted); margin:6px 0 18px; }
     .custom-midi-top { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin-bottom:18px; }
     .custom-midi-top label,.midi-fields label { display:grid; gap:6px; color:var(--muted); font-size:14px; }
     .custom-midi-top select,.midi-fields select { width:100%; min-height:48px; padding:11px 14px; color:var(--text); background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); font:inherit; }
+    .custom-midi-name { margin-bottom:18px; }
+    .custom-midi-name > label { display:block; margin-bottom:6px; color:var(--muted); font-size:14px; }
+    .custom-midi-name-fields { display:flex; gap:10px; }
+    .custom-midi-name-fields button { flex-shrink:0; padding:8px 14px; }
+    .custom-midi-name-note { color:var(--muted); font-size:13px; margin-top:6px; }
     .midi-banks { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px; }
     .midi-bank { min-width:0; padding:16px; border:1px solid var(--border); border-radius:var(--radius); }
     .midi-bank h4 { margin:0 0 12px; font-size:17px; }
@@ -171,8 +178,8 @@
       .brand { font-size:28px; letter-spacing:-1px; }
       .connection { font-size:12px; gap:7px; }
       .device-mode { font-size:12px; margin-left:12px; }
-      .view-nav { order:4; width:100%; justify-content:space-between; gap:12px; margin-top:8px; }
-      .view-nav a { flex:1; justify-content:center; padding:12px 4px; font-size:15px; }
+      .view-nav { order:4; width:100%; justify-content:space-between; gap:4px; margin-top:8px; }
+      .view-nav a { flex:1; justify-content:center; padding:12px 2px; font-size:14px; white-space:nowrap; }
       .current-preset { margin-top:12px; min-height:0; gap:14px; padding:14px; flex-wrap:wrap; }
       .preset-number { font-size:46px; letter-spacing:-3px; padding-right:16px; }
       .preset-details { flex-basis:calc(100% - 110px); }
@@ -214,6 +221,8 @@
       .management-row button { margin-top:16px; width:100%; }
       .network-fields { grid-template-columns:1fr; }
       .custom-midi-top,.midi-banks { grid-template-columns:1fr; }
+      .custom-midi-name-fields { flex-wrap:wrap; }
+      .custom-midi-name-fields button { width:100%; }
       .network-form button { width:100%; }
       .scan-progress { padding:18px; }
     }
@@ -228,6 +237,7 @@
       <nav class="view-nav" aria-label="Ansichten">
         <a href="#spielen" data-view="spielen" aria-current="page">Spielen</a>
         <a href="#presets" data-view="presets">Presets</a>
+        <a href="#custom-midi" data-view="custom-midi">Custom MIDI</a>
         <a href="#verwaltung" data-view="verwaltung">Verwaltung</a>
       </nav>
       <div class="connection" id="connection" data-state="waiting" role="status">Verbinde …</div>
@@ -277,24 +287,14 @@
           <button class="primary" id="go-btn" type="submit" disabled>Laden</button>
         </form>
         <p class="inline-error" id="preset-error" role="alert" hidden></p>
+        <div class="management-row preset-save-row">
+          <div><h3>Preset-Namen</h3><p id="save-state">Speicherstatus wird geladen …</p></div>
+          <button type="button" class="primary" id="save-flash-btn" disabled>Namen speichern</button>
+        </div>
       </section>
       <section class="management" id="management" aria-labelledby="management-heading" hidden>
         <h2 id="management-heading">Verwaltung</h2>
-        <p class="management-intro">Fußtaster, Presetmodus und gespeicherte Preset-Namen verwalten.</p>
-        <section class="custom-midi-settings" aria-labelledby="custom-midi-heading">
-          <h3 id="custom-midi-heading">Custom MIDI</h3>
-          <p>Fußtaster 3 eine Sekunde halten, um den Modus zu wechseln. Kurzes Loslassen sendet den CC-Befehl. Bei zwei Banken wechseln A und B mit jeder Betätigung. Mit „Zum Testen übernehmen“ wird eine Belegung sofort am Pedal aktiv. Erst „Alle Änderungen dauerhaft speichern“ schreibt sie in den Flash.</p>
-          <div class="custom-midi-top">
-            <label>Fußtaster<select id="custom-midi-slot"></select></label>
-            <label>Stampede-Modus<select id="custom-midi-mode"><option value="single">Single step · eine Bank</option><option value="alternate">Single step · zwei Banken</option></select></label>
-          </div>
-          <p id="custom-midi-next" class="midi-bank-note"></p>
-          <div id="custom-midi-banks" class="midi-banks"></div>
-          <div class="midi-save">
-            <p id="custom-midi-save-state" role="status">Einstellungen werden geladen …</p>
-            <button class="primary" type="button" id="custom-midi-save" disabled>Alle Änderungen dauerhaft speichern</button>
-          </div>
-        </section>
+        <p class="management-intro">Netzwerk und Presetmodus verwalten.</p>
         <form class="network-form" id="network-form">
           <h3>WLAN</h3>
           <p id="network-state">Netzwerkstatus wird geladen …</p>
@@ -322,10 +322,6 @@
           <button type="button" id="favorite-mode-btn" aria-pressed="false" disabled>Aktivieren</button>
         </div>
         <div class="management-row">
-          <div><h3>Preset-Namen</h3><p id="save-state">Speicherstatus wird geladen …</p></div>
-          <button type="button" class="primary" id="save-flash-btn" disabled>Namen speichern</button>
-        </div>
-        <div class="management-row">
           <div><h3>Unbekannte Presets</h3><p>Nur fehlende Namen erneut abfragen. Bereits bekannte Presets werden übersprungen.</p></div>
           <button type="button" id="scan-smart-btn" disabled>Unbekannte Presets scannen</button>
         </div>
@@ -338,6 +334,28 @@
           <progress id="scan-meter" max="501" value="0" aria-label="Scanfortschritt"></progress>
           <p>Die Spielsteuerung ist während des Scans gesperrt. Du kannst den Scan jederzeit stoppen.</p>
           <button type="button" id="scan-stop-btn">Scan stoppen</button>
+        </div>
+      </section>
+      <section class="custom-midi-settings" id="custom-midi-settings" aria-labelledby="custom-midi-heading" hidden>
+        <div class="section-heading"><h2 id="custom-midi-heading">Custom MIDI</h2></div>
+        <p>Fußtaster 3 eine Sekunde halten, um den Modus zu wechseln. Kurzes Loslassen sendet den CC-Befehl. Bei zwei Banken wechseln A und B mit jeder Betätigung. Namen und CC-Befehle werden mit „Zum Testen übernehmen“ sofort am Pedal aktiv. Erst „Alle Änderungen dauerhaft speichern“ schreibt sie in den Flash.</p>
+        <div class="custom-midi-top">
+          <label>Fußtaster<select id="custom-midi-slot"></select></label>
+          <label>Stampede-Modus<select id="custom-midi-mode"><option value="single">Single step · eine Bank</option><option value="alternate">Single step · zwei Banken</option></select></label>
+        </div>
+        <form class="custom-midi-name" id="custom-midi-name-form">
+          <label for="custom-midi-name">Name auf dem OLED</label>
+          <div class="custom-midi-name-fields">
+            <input id="custom-midi-name" maxlength="20" placeholder="MIDI 1" aria-describedby="custom-midi-name-note" autocomplete="off">
+            <button type="submit" id="custom-midi-name-submit" disabled>Zum Testen übernehmen</button>
+          </div>
+          <p class="custom-midi-name-note" id="custom-midi-name-note">Bis zu 20 Zeichen (ohne Umlaute). Leer lassen für „MIDI 1“.</p>
+        </form>
+        <p id="custom-midi-next" class="midi-bank-note"></p>
+        <div id="custom-midi-banks" class="midi-banks"></div>
+        <div class="midi-save">
+          <p id="custom-midi-save-state" role="status">Einstellungen werden geladen …</p>
+          <button class="primary" type="button" id="custom-midi-save" disabled>Alle Änderungen dauerhaft speichern</button>
         </div>
       </section>
     </main>
